@@ -64,13 +64,13 @@ export function smartScroll({ postReset = true }: SmartScrollStepOptions = {}) {
           scrollOffset -= 500;
         }
     
-        await sleep(250);
+        await sleep(1000);
 
         if (postReset) {
           await params.page.evaluate(() => {
             window.scrollTo(0, 0);
           });
-          await sleep(1000);
+          await sleep(2000);
         }
 
         await client.send('DOMSnapshot.disable');
