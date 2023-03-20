@@ -1,6 +1,6 @@
 {
   "name": "franklin-importer-shared",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Shared library for Franklin Importer Tooling",
   "type": "module",
   "main": "dist/index.js",
