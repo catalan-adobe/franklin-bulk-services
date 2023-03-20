@@ -154,4 +154,3 @@ export async function runStepsSequence(page: puppeteer.Page, url, steps): Promis
 }
 
 export * as Steps from './steps/steps.js';
-// export * from './dom-snapshot.js';
