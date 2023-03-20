@@ -63,10 +63,6 @@ async function readLines() {
  */
 
 async function cliWorkerHandler(workerScriptFilename, workerOptions, argv) {
-  console.log(workerScriptFilename);
-  console.log(workerOptions);
-  console.log(argv);
-
   let urls = [];
 
   // set delivery stage

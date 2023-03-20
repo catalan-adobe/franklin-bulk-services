@@ -34,8 +34,6 @@ parentPort.on('message', async (msg) => {
     try {
       const url = buildAPIURL(franklinStage, msg.url);
 
-      console.log(url);
-
       const response = await axios.post(url);
 
       parentPort.postMessage({
