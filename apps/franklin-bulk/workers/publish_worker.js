@@ -22,16 +22,19 @@ function buildAPIURL(stage, url) {
 
 // Listen for messages from the parent thread
 parentPort.on('message', async (msg) => {
+  // console.log('message received', msg);
   if (msg && msg.type === 'exit') {
     // If the parent thread sent 'exit', exit the worker thread
     process.exit();
   } else {
-    if (msg.stage) {
-      franklinStage = msg.stage;
+    if (msg.options?.stage) {
+      franklinStage = msg.options.stage;
     }
 
     try {
       const url = buildAPIURL(franklinStage, msg.url);
+
+      console.log(url);
 
       const response = await axios.post(url);
 
