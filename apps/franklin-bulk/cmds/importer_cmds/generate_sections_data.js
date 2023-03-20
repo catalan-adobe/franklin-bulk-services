@@ -24,6 +24,7 @@ function yargsBuilder(yargs) {
       alias: 'e',
       describe: 'A list of CSS selectors to exclude from the analysis (comma separated)',
       type: 'string',
+      demandOption: true,
     })
     .option('workers', {
       alias: 'w',

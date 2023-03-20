@@ -9,7 +9,7 @@ const { Worker } = require('worker_threads');
  * Worker handlers
  */
 
-function workerMsgHandler(worker, urls, results, result) {
+function workerMsgHandler(worker, urls, results, workerOptions, argv, result) {
   // store the result
   const idx = results.findIndex((r) => r.url === result.url);
   if (idx > -1) {
@@ -23,6 +23,8 @@ function workerMsgHandler(worker, urls, results, result) {
     results.push({ url, status: null });
     worker.postMessage({
       line: urls.length - urls.length,
+      options: workerOptions,
+      argv,
       url,
     });
   } else {
@@ -102,7 +104,7 @@ async function cliWorkerHandler(workerScriptFilename, workerOptions, argv) {
     // Handle worker exit
     worker.on('exit', workerExitHandler.bind(null, workers));
     // Listen for messages from the worker thread
-    worker.on('message', workerMsgHandler.bind(null, worker, urls, results));
+    worker.on('message', workerMsgHandler.bind(null, worker, urls, results, workerOptions, argv));
   }
 
   // Send a URL to each worker
