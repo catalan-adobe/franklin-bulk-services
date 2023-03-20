@@ -9,7 +9,21 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
+import { PuppeteerBlocker } from '@cliqz/adblocker-puppeteer';
+import fetch from 'cross-fetch';
 
-export * as Puppeteer from './src/puppeteer/puppeteer.js';
-export * as Time from './src/time.js';
-export * as Url from './src/url.js';
+export function GDPRAutoConsent() {
+  return function(action) {
+    return async (params) => {
+      const blocker = await PuppeteerBlocker.fromLists(fetch, [
+        'https://secure.fanboy.co.nz/fanboy-cookiemonster.txt'
+      ]);
+  
+      await blocker.enableBlockingInPage(params.page);
+  
+      await action(params);
+  
+      return params;
+    };
+  }
+}

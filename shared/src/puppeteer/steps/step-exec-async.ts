@@ -10,6 +10,26 @@
  * governing permissions and limitations under the License.
  */
 
-export * as Puppeteer from './src/puppeteer/puppeteer.js';
-export * as Time from './src/time.js';
-export * as Url from './src/url.js';
+export function execAsync(fn) {
+  return function(action) {
+    return async (params) => {
+      try {
+        console.info('do execute script');
+        
+        // main action
+        await action(params);
+        
+        await fn(params.page);
+      } catch(e) {
+        console.error('execute script catch', e);
+        params.result = {
+          passed: false,
+          error: e,
+        };
+      } finally {
+        console.info('execute script finally');
+        return params;
+      }
+    };
+  };
+}
