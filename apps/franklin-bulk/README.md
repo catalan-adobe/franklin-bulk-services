@@ -1,22 +1,25 @@
 Franklin Bulk Operations CLI
 ===
 
+### Install
+
 ```
-npx franklin-bulk
+npm install -g franklin-bulk
 ```
 
 ### Usage
 
 ```
-franklin-bulk [command]
+franklin-bulk <command>
 
 Commands:
-  index.js preview  Preview documents in Franklin
-  index.js live     Publish documents in Franklin
+  franklin-bulk importer <command>  Franklin Importer commands
+  franklin-bulk live                Publish pages to live stage on Franklin
+  franklin-bulk preview             Publish pages to preview stage on Franklin
 
 Options:
-      --version  Show version number                                   [boolean]
-  -h             Show help                                             [boolean]
+      --version  Show version number                                                                                                                                                                                                     [boolean]
+  -h             Show help                                                                                                                                                                                                               [boolean]
 ```
 
 
