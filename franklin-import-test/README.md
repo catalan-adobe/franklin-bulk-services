@@ -1,7 +1,9 @@
-Franklin Import via Puppeteer
-===
+# ⚠️ This is only meant for demo purposes!
 
-## Usage
+### Franklin Import via Puppeteer
+
+
+#### Usage
 
 from `../shared`
 ```
@@ -19,6 +21,6 @@ node index.js <URL_TO_IMPORT>
 
 The `.docx` will be generated in the `docx` folder
 
-### Change Import script
+##### Change Import script
 
 In `index.js` adapt the path set in `importerLib.Puppeteer.Steps.franklinImportPage` function
