@@ -10,6 +10,15 @@ npm install -g acom-sections-mapping
 ### Usage
 
 ```
+acom-sections-mapping <command>
+
+Commands:
+  acom-sections-mapping prepare  Generate sections data for given list of URLs (json + screenshots)
+  acom-sections-mapping serve    Serve sections data via HTTP
+
+Options:
+      --version  Show version number                                                                                                                                                                                                     [boolean]
+  -h             Show help                                                                                                                                                                                                               [boolean]
 ```
 
 
