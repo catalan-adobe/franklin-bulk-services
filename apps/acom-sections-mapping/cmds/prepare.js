@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // imports
-const { cliWorkerHandler } = require('../../src/cliWorkerHandler.js');
+const { cliWorkerHandler } = require('../src/cliWorkerHandler.js');
 
 /*
  * Helper functions

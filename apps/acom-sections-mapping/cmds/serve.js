@@ -11,7 +11,7 @@ const crypto = require('crypto');
 const { glob } = require('glob');
 const path = require('path');
 const fs = require('fs');
-const { cliWorkerHandler } = require('../../src/cliWorkerHandler.js');
+const { cliWorkerHandler } = require('../src/cliWorkerHandler.js');
 
 /*
  * Helper functions
