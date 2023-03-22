@@ -1,6 +1,6 @@
 {
   "name": "acom-sections-mapping",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "CLI for adobe.com sections mapping flow",
   "bin": "index.js",
   "engines" : { 
