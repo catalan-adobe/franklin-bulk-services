@@ -33,6 +33,18 @@ function yargsBuilder(yargs) {
  * Helper functions
  */
 
+function template(strings, ...keys) {
+  return (...values) => {
+    const dict = values[values.length - 1] || {};
+    const result = [strings[0]];
+    keys.forEach((key, i) => {
+      const value = Number.isInteger(key) ? values[key] : dict[key];
+      result.push(value, strings[i + 1]);
+    });
+    return result.join("");
+  };
+}
+
 async function sectionsDataHandler (req, res) {
   try {
     let filePattern = '';
@@ -91,16 +103,13 @@ async function sectionsDataHandler (req, res) {
 exports.desc = 'Serve sections data via HTTP';
 exports.builder = yargsBuilder;
 exports.handler = function (argv) {
-
-  console.log(argv);
-  // process.exit(0);
-  const app = express()
-  const port = 3000
+  const app = express();
+  const port = 3000;
   const dataFolder = path.join(process.cwd(), argv.dataFolder,);
   const blocksFolder = path.join(process.cwd(), argv.blocksFolder);
   
   app.get('/', (req, res) => {
-    res.send('Sections Data Analysis');
+    res.send('<html><body><pre>' + APP_DEFAULT_OUTPUT(port) + '</pre></body></html>');
   })
   
   // static content routes
@@ -116,6 +125,14 @@ exports.handler = function (argv) {
 );
   
   app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    console.log(APP_DEFAULT_OUTPUT(port));
   });
 }
+
+const APP_DEFAULT_OUTPUT = template`
+adobe.com Sections Mapping Server:
+* Data:                           http://localhost:${0}/data
+* Blocks:                         http://localhost:${0}/blocks
+* Get Sections Mapping for a URL: http://localhost:${0}/sections-data?url=<url>
+* Milo Blocks Sample Pages List:  http://localhost:${0}/blocks/milo_blocks_samples_pages.html
+`;
