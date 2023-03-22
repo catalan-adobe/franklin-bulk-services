@@ -1,6 +1,5 @@
 const { parentPort } = require('worker_threads');
-
-const OUTPUT_FOLDER = process.cwd()+'/sections-data';
+const path = require('path');
 
 /*
 * Worker thread
@@ -29,7 +28,7 @@ parentPort.on('message', async (msg) => {
           importerLib.Puppeteer.Steps.smartScroll(),
           importerLib.Puppeteer.Steps.postLoadWait(2000),
           importerLib.Puppeteer.Steps.getFullWidthSectionsXPaths({
-            outputFolder: OUTPUT_FOLDER,
+            outputFolder: path.join(process.cwd(), msg.argv.outputFolder, 'data'),
             exclusions: msg.argv.cssExclusions,
           }),
         ]);
