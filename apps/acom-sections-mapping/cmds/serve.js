@@ -1,17 +1,12 @@
 #!/usr/bin/env node
 
 // imports
-// var http = require('http');
 const express = require('express');
 var serveIndex = require('serve-index');
-const yargs = require('yargs');
-const { hideBin } = require('yargs/helpers');
 const crypto = require('crypto');
-// or using commonjs, that's fine, too
 const { glob } = require('glob');
 const path = require('path');
 const fs = require('fs');
-const { cliWorkerHandler } = require('../../src/cliWorkerHandler.js');
 
 /*
  * Helper functions
@@ -38,30 +33,35 @@ function yargsBuilder(yargs) {
  * Helper functions
  */
 
+function template(strings, ...keys) {
+  return (...values) => {
+    const dict = values[values.length - 1] || {};
+    const result = [strings[0]];
+    keys.forEach((key, i) => {
+      const value = Number.isInteger(key) ? values[key] : dict[key];
+      result.push(value, strings[i + 1]);
+    });
+    return result.join("");
+  };
+}
+
 async function sectionsDataHandler (req, res) {
   try {
     let filePattern = '';
-    console.log(req.query);
     if (req.query.url) {
       const urlHash = crypto.createHash('sha1').update(req.query.url).digest('hex');
       filePattern = urlHash;
     } else if (req.query.pageHash) {
       filePattern = req.query.pageHash;
     }
-
-    console.log(res.dataFolder);
-    console.log(res.blocksFolder);
     
-    console.log(`Looking for sections data file matching pattern: "**/${filePattern}-sections.json"`);
+    console.log(`Looking for sections data file matching pattern: "${path.join(res.dataFolder, `/**/${filePattern}-sections.json`)}"`);
 
-    const jsfiles = await glob(path.join(res.dataFolder, `**/${filePattern}-sections.json`));
-    
+    const jsfiles = await glob(path.join(res.dataFolder, `/**/${filePattern}-sections.json`));
+
     const jsFile = jsfiles[0];
   
     let dataFile = jsFile;
-    if (!path.isAbsolute(dataFile)) {
-      dataFile = path.join(__dirname, jsFile);
-    }
 
     const sectionsDataRaw = await fs.readFileSync(dataFile, 'utf8');
     const sectionsData = JSON.parse(sectionsDataRaw);
@@ -70,7 +70,7 @@ async function sectionsDataHandler (req, res) {
     for (let i = 0; i < sectionsData.length; i++) {
       const section = sectionsData[i];
   
-      const fS = path.join(res.blocksFolder, `**/${section.urlHash}*${section.xpathHash}*.png`);
+      const fS = path.join(res.blocksFolder, `/**/${section.urlHash}*${section.xpathHash}*.png`);
 
       const blockFiles = await glob(fS);
 
@@ -103,29 +103,36 @@ async function sectionsDataHandler (req, res) {
 exports.desc = 'Serve sections data via HTTP';
 exports.builder = yargsBuilder;
 exports.handler = function (argv) {
-
-  console.log(argv);
-  // process.exit(0);
-  const app = express()
-  const port = 3000
+  const app = express();
+  const port = 3000;
+  const dataFolder = path.join(process.cwd(), argv.dataFolder,);
+  const blocksFolder = path.join(process.cwd(), argv.blocksFolder);
   
   app.get('/', (req, res) => {
-    res.send('Sections Data Analysis');
+    res.send('<html><body><pre>' + APP_DEFAULT_OUTPUT(port) + '</pre></body></html>');
   })
   
   // static content routes
-  app.use('/data', express.static(argv.dataFolder), serveIndex(argv.dataFolder, {'icons': true}));
-  app.use('/blocks', express.static(argv.blocksFolder), serveIndex(argv.blocksFolder, {'icons': true}));
+  app.use('/data', express.static(dataFolder), serveIndex(dataFolder, {'icons': true}));
+  app.use('/blocks', express.static(blocksFolder), serveIndex(blocksFolder, {'icons': true}));
   // api routes
   app.get('/sections-data', (req, res, next) => {
-    res.dataFolder = argv.dataFolder;
-    res.blocksFolder = argv.blocksFolder;
+    res.dataFolder = dataFolder;
+    res.blocksFolder = blocksFolder;
     next();
   },
   sectionsDataHandler
 );
   
   app.listen(port, () => {
-    console.log(`Example app listening on port ${port}`);
+    console.log(APP_DEFAULT_OUTPUT(port));
   });
 }
+
+const APP_DEFAULT_OUTPUT = template`
+adobe.com Sections Mapping Server:
+* Data:                           http://localhost:${0}/data
+* Blocks:                         http://localhost:${0}/blocks
+* Get Sections Mapping for a URL: http://localhost:${0}/sections-data?url=<url>
+* Milo Blocks Sample Pages List:  http://localhost:${0}/blocks/milo_blocks_samples_pages.html
+`;
