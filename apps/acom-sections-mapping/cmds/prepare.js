@@ -31,7 +31,12 @@ async function getBlocksList() {
     // try getting blocks from milo library
     const resp = await fetch(MILO_LIBRARY_JSON_URL);
     const library = await resp.json();
-    blocksList = library.blocks.data.map((block) => { return { name: block.name.toLowerCase().replaceAll(' ', '-'), path: block.path } });
+    blocksList = library.blocks.data.map((block) => {
+      return {
+        name: block.path.substring(block.path.lastIndexOf('/') + 1),
+        path: block.path,
+      };
+    });
   } catch(e) {
     // fallback to default blocks
     blocksList = MILO_BLOCKS_DEFAULT.map((block) => { return { name: block, path: MILO_BLOCK_SAMPLE_PAGE_ROOT + block } });
