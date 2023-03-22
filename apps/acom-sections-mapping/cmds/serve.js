@@ -1,17 +1,12 @@
 #!/usr/bin/env node
 
 // imports
-// var http = require('http');
 const express = require('express');
 var serveIndex = require('serve-index');
-const yargs = require('yargs');
-const { hideBin } = require('yargs/helpers');
 const crypto = require('crypto');
-// or using commonjs, that's fine, too
 const { glob } = require('glob');
 const path = require('path');
 const fs = require('fs');
-const { cliWorkerHandler } = require('../src/cliWorkerHandler.js');
 
 /*
  * Helper functions
@@ -41,18 +36,14 @@ function yargsBuilder(yargs) {
 async function sectionsDataHandler (req, res) {
   try {
     let filePattern = '';
-    console.log(req.query);
     if (req.query.url) {
       const urlHash = crypto.createHash('sha1').update(req.query.url).digest('hex');
       filePattern = urlHash;
     } else if (req.query.pageHash) {
       filePattern = req.query.pageHash;
     }
-
-    console.log(res.dataFolder);
-    console.log(res.blocksFolder);
     
-    console.log(`Looking for sections data file matching pattern: "**/${filePattern}-sections.json"`);
+    console.log(`Looking for sections data file matching pattern: "${path.join(res.dataFolder, `/**/${filePattern}-sections.json`)}"`);
 
     const jsfiles = await glob(path.join(res.dataFolder, `**/${filePattern}-sections.json`));
     
