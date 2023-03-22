@@ -10,15 +10,37 @@ const fs = require('fs');
  */
 
 const MILO_BLOCK_SAMPLE_PAGE_ROOT = 'https://main--milo--adobecom.hlx.page/docs/library/blocks/';
-const MILO_BLOCKS_DEFAULT = [ 'aside', 'marquee', 'icon-block', 'text', 'media', 'carousel', 'fragment', 'z-pattern' ];
+const MILO_LIBRARY_JSON_URL = 'https://milo.adobe.com/docs/library/library.json';
+const MILO_BLOCKS_DEFAULT = [ 'accordion', 'aside', 'carousel', 'fragment', 'iconblock', 'marquee', 'media', 'text', 'z-pattern' ];
 const CUSTOM_BLOCKS_DEFAULT = [ 'unknown' ];
+const MILO_BLOCK_SAMPLE_PAGE_HTML = `<html>
+  <body>
+  <h3><a href="https://milo.adobe.com" target="_blank">Milo</a> Blocks Sample Pages</h3>
+  <ul>%BLOCKS%</ul>
+  </body>
+</html>`;
 
 /*
  * Helper functions
  */
 
-function getDefaultBlocksList() {
-  return MILO_BLOCKS_DEFAULT.concat(CUSTOM_BLOCKS_DEFAULT);
+async function getBlocksList() {
+  let blocksList = [];
+
+  try {
+    // try getting blocks from milo library
+    const resp = await fetch(MILO_LIBRARY_JSON_URL);
+    const library = await resp.json();
+    blocksList = library.blocks.data.map((block) => { return { name: block.name.toLowerCase().replaceAll(' ', '-'), path: block.path } });
+  } catch(e) {
+    // fallback to default blocks
+    blocksList = MILO_BLOCKS_DEFAULT.map((block) => { return { name: block, path: MILO_BLOCK_SAMPLE_PAGE_ROOT + block } });
+  }
+
+  // add custom blocks
+  blocksList = blocksList.concat(CUSTOM_BLOCKS_DEFAULT.map((block) => { return { name: block, path: '' } }));
+
+  return blocksList;
 }
 
 function yargsBuilder(yargs) {
@@ -68,35 +90,27 @@ function yargsBuilder(yargs) {
 exports.desc = 'Generate sections data for given list of URLs (json + screenshots)';
 exports.builder = yargsBuilder;
 exports.handler = async function(argv) {
-  // prepare output folder structure
+  // create output folder structure
   const outputFolder = path.join(process.cwd(), argv.outputFolder);
-  let blocksList = getDefaultBlocksList();
-
-  // milo blocks
-  if (!fs.existsSync(outputFolder)) {
-    fs.mkdirSync(outputFolder, { recursive: true });
-  }
-
+  let blocksList = await getBlocksList();
   for (const block of blocksList) {
-    const blockFolder = path.join(outputFolder, 'blocks', block);
+    const blockFolder = path.join(outputFolder, 'blocks', block.name);
     if (!fs.existsSync(blockFolder)) {
       fs.mkdirSync(blockFolder, { recursive: true });
     }
   }
 
-  // milo blocks samples html page
-  const blockSampleListItems = MILO_BLOCKS_DEFAULT.map((block) => `<li><a href="${MILO_BLOCK_SAMPLE_PAGE_ROOT}${block}">${block}</a></li>`);
+  // create milo blocks samples html page
+  const blockSampleListItems = [];
+  for (const block of blocksList) {
+    if (block.path !== '') {
+      blockSampleListItems.push(`<li><a href="${block.path}">${block.name}</a></li>`);
+    }
+  }
   fs.writeFileSync(path.join(outputFolder, 'blocks', 'milo_blocks_samples_pages.html'), MILO_BLOCK_SAMPLE_PAGE_HTML.replace('%BLOCKS%', blockSampleListItems.join('\n')));
 
-  // execute
+  // execute preparation of the sections mapping
   return await cliWorkerHandler('prepare_sections_data_worker.js', {
     outputFolder: argv.outputFolder,
   }, argv);
 };
-
-const MILO_BLOCK_SAMPLE_PAGE_HTML = `<html>
-  <body>
-  <h3><a href="https://milo.adobe.com" target="_blank">Milo</a> Blocks Sample Pages</h3>
-  <ul>%BLOCKS%</ul>
-  </body>
-</html>`;
