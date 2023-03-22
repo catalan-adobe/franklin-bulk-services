@@ -45,14 +45,11 @@ async function sectionsDataHandler (req, res) {
     
     console.log(`Looking for sections data file matching pattern: "${path.join(res.dataFolder, `/**/${filePattern}-sections.json`)}"`);
 
-    const jsfiles = await glob(path.join(res.dataFolder, `**/${filePattern}-sections.json`));
-    
+    const jsfiles = await glob(path.join(res.dataFolder, `/**/${filePattern}-sections.json`));
+
     const jsFile = jsfiles[0];
   
     let dataFile = jsFile;
-    if (!path.isAbsolute(dataFile)) {
-      dataFile = path.join(__dirname, jsFile);
-    }
 
     const sectionsDataRaw = await fs.readFileSync(dataFile, 'utf8');
     const sectionsData = JSON.parse(sectionsDataRaw);
@@ -61,7 +58,7 @@ async function sectionsDataHandler (req, res) {
     for (let i = 0; i < sectionsData.length; i++) {
       const section = sectionsData[i];
   
-      const fS = path.join(res.blocksFolder, `**/${section.urlHash}*${section.xpathHash}*.png`);
+      const fS = path.join(res.blocksFolder, `/**/${section.urlHash}*${section.xpathHash}*.png`);
 
       const blockFiles = await glob(fS);
 
@@ -99,18 +96,20 @@ exports.handler = function (argv) {
   // process.exit(0);
   const app = express()
   const port = 3000
+  const dataFolder = path.join(process.cwd(), argv.dataFolder,);
+  const blocksFolder = path.join(process.cwd(), argv.blocksFolder);
   
   app.get('/', (req, res) => {
     res.send('Sections Data Analysis');
   })
   
   // static content routes
-  app.use('/data', express.static(argv.dataFolder), serveIndex(argv.dataFolder, {'icons': true}));
-  app.use('/blocks', express.static(argv.blocksFolder), serveIndex(argv.blocksFolder, {'icons': true}));
+  app.use('/data', express.static(dataFolder), serveIndex(dataFolder, {'icons': true}));
+  app.use('/blocks', express.static(blocksFolder), serveIndex(blocksFolder, {'icons': true}));
   // api routes
   app.get('/sections-data', (req, res, next) => {
-    res.dataFolder = argv.dataFolder;
-    res.blocksFolder = argv.blocksFolder;
+    res.dataFolder = dataFolder;
+    res.blocksFolder = blocksFolder;
     next();
   },
   sectionsDataHandler
