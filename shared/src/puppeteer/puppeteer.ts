@@ -93,7 +93,7 @@ export async function runStepsSequence(page: puppeteer.Page, url, steps): Promis
   
   async function mainBrowserAction(params) {
     try {
-      console.info('mainBrowserAction - navigate to page');
+      // console.info('mainBrowserAction - navigate to page');
       const resp = await params.page.goto(params.url);
       // fail early in case page is unreachable for some reason
       if (resp.status() >= 400) {
@@ -109,7 +109,7 @@ export async function runStepsSequence(page: puppeteer.Page, url, steps): Promis
         error: e,
       };
     } finally {
-      params.logger.info('mainBrowserAction - navigate to page finally');
+      // params.logger.info('mainBrowserAction - navigate to page finally');
       return params;
     }
   };
@@ -130,8 +130,8 @@ export async function runStepsSequence(page: puppeteer.Page, url, steps): Promis
   try {    
     const browserScript = wrapBrowserAction(mainBrowserAction, ...steps);
     const res = await browserScript(browserScriptParameters);
-    console.log('Browser Script Result:');
-    console.log(res);
+    // console.log('Browser Script Result:');
+    // console.log(res);
 
     if (!res.result.passed) {
       throw new Error(`browser script failed: ${res.result.error}`);
@@ -148,7 +148,7 @@ export async function runStepsSequence(page: puppeteer.Page, url, steps): Promis
 
   } finally {
     // ensure browser gets closed
-    console.info('done browser sequence');
+    // console.info('done browser sequence');
   }
 
 }
