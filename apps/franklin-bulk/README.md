@@ -13,13 +13,14 @@ npm install -g franklin-bulk
 franklin-bulk <command>
 
 Commands:
-  franklin-bulk importer <command>  Franklin Importer commands
-  franklin-bulk live                Publish pages to live stage on Franklin
-  franklin-bulk preview             Publish pages to preview stage on Franklin
+  franklin-bulk lighthouse  Executes Lighthouse analysis for a list of URLs
+  franklin-bulk live        Publish pages to live stage on Franklin
+  franklin-bulk preview     Publish pages to preview stage on Franklin
+  franklin-bulk screenshot  Take full page screenshots for given list of URLs
 
 Options:
-      --version  Show version number                                                                                                                                                                                                     [boolean]
-  -h             Show help                                                                                                                                                                                                               [boolean]
+      --version  Show version number                                                                                               [boolean]
+  -h             Show help                                                                                                         [boolean]
 ```
 
 
