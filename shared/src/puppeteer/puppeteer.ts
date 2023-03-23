@@ -136,6 +136,8 @@ export async function runStepsSequence(page: puppeteer.Page, url, steps): Promis
     if (!res.result.passed) {
       throw new Error(`browser script failed: ${res.result.error}`);
     }
+
+    return res;
   } catch(e) {
     console.error('main error:', e);
     if (e.message.indexOf('net::ERR_NAME_NOT_RESOLVED') > -1) {
@@ -146,6 +148,7 @@ export async function runStepsSequence(page: puppeteer.Page, url, steps): Promis
       throw e;
     }
 
+    return null;
   } finally {
     // ensure browser gets closed
     // console.info('done browser sequence');
