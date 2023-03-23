@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // imports
-const { cliWorkerHandler } = require('../../src/cliWorkerHandler.js');
-const { defaultCLICmdWithWorkerYargsBuilder } = require('../../src/yargs.js');
+const { cliWorkerHandler } = require('../src/cliWorkerHandler.js');
+const { defaultCLICmdWithWorkerYargsBuilder } = require('../src/yargs.js');
 
 /*
  * Main
