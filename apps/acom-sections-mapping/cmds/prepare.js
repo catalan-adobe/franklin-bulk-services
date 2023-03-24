@@ -4,6 +4,7 @@
 const { cliWorkerHandler } = require('../src/cliWorkerHandler.js');
 const path = require('path');
 const fs = require('fs');
+const { terminal } = require('terminal-kit');
 
 /*
  * constants
@@ -75,12 +76,12 @@ function yargsBuilder(yargs) {
     })
     .option('workers', {
       alias: 'w',
-      describe: 'Number of workers to use (max. 5)',
+      describe: 'Number of workers to use (max. 8)',
       type: 'number',
       default: 1,
       coerce: (value) => {
         if (value > 8) {
-          terminal.yellow('Warning: Maximum number of workers is 5. Using 5 workers instead.\n');
+          terminal.yellow('Warning: Maximum number of workers is 8. Using 8 workers instead.\n');
           return 8;
         }
         return value;
@@ -97,6 +98,7 @@ exports.builder = yargsBuilder;
 exports.handler = async function(argv) {
   // create output folder structure
   let outputFolder = path.isAbsolute(argv.outputFolder) ? argv.outputFolder :  path.join(process.cwd(), argv.outputFolder);
+
   let blocksList = await getBlocksList();
   for (const block of blocksList) {
     const blockFolder = path.join(outputFolder, 'blocks', block.name);
