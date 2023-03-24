@@ -96,7 +96,7 @@ exports.desc = 'Generate sections data for given list of URLs (json + screenshot
 exports.builder = yargsBuilder;
 exports.handler = async function(argv) {
   // create output folder structure
-  const outputFolder = path.join(process.cwd(), argv.outputFolder);
+  let outputFolder = path.isAbsolute(argv.outputFolder) ? argv.outputFolder :  path.join(process.cwd(), argv.outputFolder);
   let blocksList = await getBlocksList();
   for (const block of blocksList) {
     const blockFolder = path.join(outputFolder, 'blocks', block.name);
@@ -116,6 +116,6 @@ exports.handler = async function(argv) {
 
   // execute preparation of the sections mapping
   return await cliWorkerHandler('prepare_sections_data_worker.js', {
-    outputFolder: argv.outputFolder,
+    outputFolder: outputFolder,
   }, argv);
 };
