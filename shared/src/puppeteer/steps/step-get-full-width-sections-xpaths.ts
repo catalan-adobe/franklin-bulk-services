@@ -143,7 +143,7 @@ export function getFullWidthSectionsXPaths({ outputFolder = process.cwd() + '/xp
         for (let i = 0; i < result.length; i++) {
           const section = result[i];
           await section.div.screenshot({
-            path: pUtils.join(path, urlHash + '.section-' + i + '.' + section.xpathHash + '.' + filename + '.png'),
+            path: pUtils.join(path, urlHash + '.section-' + i + '.' + section.xpathHash + '.png'),
           });
           await sleep(100);
         }
