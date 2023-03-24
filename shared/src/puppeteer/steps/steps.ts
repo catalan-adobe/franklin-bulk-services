@@ -6,5 +6,4 @@ export * from './step-collect-webconsole.js';
 export * from './step-fullpage-screenshot.js';
 export * from './step-gdpr-autoconsent.js';
 export * from './step-exec-async.js';
-export * from './step-get-full-width-sections-xpaths.js';
 export * from './step-run-lighthouse.js';
