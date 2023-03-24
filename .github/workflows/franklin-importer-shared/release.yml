@@ -1,4 +1,5 @@
 name: franklin-importer-shared - Semantic Release
+
 on:
   push:
     branches:
