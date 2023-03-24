@@ -1,5 +1,6 @@
-const { parentPort } = require('worker_threads');
 const path = require('path');
+const { parentPort } = require('worker_threads');
+const { getFullWidthSectionsXPaths }  = require('../src/puppeteer/steps/step-get-full-width-sections-xpaths.js');
 
 /*
 * Worker thread
@@ -27,7 +28,7 @@ parentPort.on('message', async (msg) => {
           }),
           importerLib.Puppeteer.Steps.smartScroll(),
           importerLib.Puppeteer.Steps.postLoadWait(2000),
-          importerLib.Puppeteer.Steps.getFullWidthSectionsXPaths({
+          getFullWidthSectionsXPaths({
             outputFolder: path.join(msg.options.outputFolder, 'data'),
             exclusions: msg.argv.cssExclusions,
           }),
