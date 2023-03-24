@@ -28,7 +28,7 @@ parentPort.on('message', async (msg) => {
           importerLib.Puppeteer.Steps.smartScroll(),
           importerLib.Puppeteer.Steps.postLoadWait(2000),
           importerLib.Puppeteer.Steps.getFullWidthSectionsXPaths({
-            outputFolder: path.join(process.cwd(), msg.argv.outputFolder, 'data'),
+            outputFolder: path.join(msg.options.outputFolder, 'data'),
             exclusions: msg.argv.cssExclusions,
           }),
         ]);
