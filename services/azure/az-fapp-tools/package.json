@@ -1,0 +1,13 @@
+{
+  "name": "functions-puppeteer",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "start": "func start",
+    "test": "echo \"No tests yet...\""
+  },
+  "dependencies": {
+    "franklin-bulk-shared": "1.0.4"
+  }
+}
