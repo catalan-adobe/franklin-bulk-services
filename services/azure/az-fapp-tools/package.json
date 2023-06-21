@@ -8,6 +8,6 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
-    "franklin-bulk-shared": "1.0.4"
+    "franklin-bulk-shared": "1.5.0"
   }
 }
