@@ -5,29 +5,60 @@ export async function main(context, req) {
     let page;
 
     try {
-        [browser, page] = await importerLib.Puppeteer.initBrowser();
-    
+        [browser, page] = await importerLib.Puppeteer.initBrowser({ headless: true });
+            
         const url = req.query.url || "https://google.com/";
-    
+        const width = req.query.width ? parseInt(req.query.width, 10) : 1280;
+        const postLoadWait = req.query.delay ? parseInt(req.query.delay, 10) : 1000;
+
         await page.setViewport({
-            width: 1200,
+            width: width,
             height: 1000,
             deviceScaleFactor: 1,
         });
     
-        await page.goto(url);
-    
-        /*
-          scroll
-        */
+        console.log(`Loading ${url}...`);
+        console.log(`Viewport: ${width}x1000`);
 
-        await importerLib.Puppeteer.scrollDown(page);
-        await importerLib.Puppeteer.scrollUp(page);
-                        
-        // cool down
-        await importerLib.Time.sleep(1000);
+        let screenshotBuffer;
 
-        const screenshotBuffer = await page.screenshot({ fullPage: true });
+        await importerLib.Puppeteer.runStepsSequence(
+            page,
+            url,
+            [
+                importerLib.Puppeteer.Steps.postLoadWait(500),
+
+                importerLib.Puppeteer.Steps.GDPRAutoConsent(),
+                
+                importerLib.Puppeteer.Steps.execAsync(async (browserPage) => {
+                    await browserPage.keyboard.press('Escape');
+                }),
+
+                importerLib.Puppeteer.Steps.execAsync(async (browserPage) => {
+                    // scroll to bottom
+                    await browserPage.evaluate(() => {
+                    window.scrollTo({ left: 0, top: window.document.body.scrollHeight, behavior: 'smooth' });
+                    });
+                    await importerLib.Time.sleep(2000);
+              
+                    // scroll bsck up
+                    await browserPage.evaluate(() => {
+                    window.scrollTo(0, 0);
+                    });
+                    await importerLib.Time.sleep(250);
+                }),
+
+                importerLib.Puppeteer.Steps.execAsync(async (browserPage) => {
+                    await importerLib.Time.sleep(postLoadWait);
+                }),
+
+                importerLib.Puppeteer.Steps.execAsync(async (browserPage) => {
+                    screenshotBuffer = await browserPage.screenshot({ fullPage: true });
+                }),
+            ],
+        );
+
+        await browser.close();
     
         context.res = {
             body: screenshotBuffer,
