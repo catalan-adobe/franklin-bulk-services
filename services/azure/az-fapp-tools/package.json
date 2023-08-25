@@ -8,6 +8,8 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
-    "franklin-bulk-shared": "1.5.0"
+    "find-free-port": "^2.0.0",
+    "franklin-bulk-shared": "1.13.0",
+    "lighthouse": "11.0.0"
   }
 }
