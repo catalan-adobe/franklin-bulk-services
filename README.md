@@ -16,3 +16,9 @@ Requires
   ```
   make az-fapp-build function-app=<AZURE_FUNCTION_APP_NAME> build-dir=<FN_TARGET_FOLDER> fapp-folder=<ORIGIN_FUNCTIONS_SRC_FOLDER>
   ```
+
+2. Run the functions locally
+
+  ```
+  func start --verbose --enable-json-output --javascript
+  ```
