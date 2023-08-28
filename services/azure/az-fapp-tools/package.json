@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "find-free-port": "^2.0.0",
-    "franklin-bulk-shared": "1.13.0",
+    "franklin-bulk-shared": "1.13.1",
     "lighthouse": "11.0.0"
   }
 }
