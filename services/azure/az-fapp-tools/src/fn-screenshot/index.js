@@ -1,4 +1,5 @@
 import * as frkBulk from 'franklin-bulk-shared';
+import { parseCookies } from '../lib/http/request.js';
 
 const DEFAULT_INPUT_PARAMETERS = {
     url:            "https://google.com/",
@@ -40,9 +41,15 @@ export async function main(context, req) {
             width: options.width,
             adBlocker: options.adBlocker,
             gdprBlocker: options.gdprBlocker,
-            headless: false,
+            headless: true,
         });
-    
+
+        if (Object.keys(req.headers).includes('x-set-cookie')) {
+            const cookies = parseCookies(options.url, req.headers['x-set-cookie']);
+            console.log('cookies', cookies);
+            await page.setCookie(...cookies);
+        }
+
         await page.goto(options.url, { waitUntil: 'networkidle0' });
         
         if (options.delay > 0) {
@@ -53,17 +60,19 @@ export async function main(context, req) {
             try {
                 let navigationTriggered = false;
                 await page.setRequestInterception(true);
-                page.on('request', interceptedRequest => {
-                    if (interceptedRequest.isNavigationRequest()) {
-                        context.log(interceptedRequest);
-                        navigationTriggered = true;
+                page.on('request', (interceptedRequest) => {
+                    if (!interceptedRequest.isInterceptResolutionHandled()) {
+                        if (interceptedRequest.isNavigationRequest()) {
+                            context.log(interceptedRequest);
+                            navigationTriggered = true;
+                        }
+                        interceptedRequest.continue();
                     }
-                    interceptedRequest.continue();
                 });
                           
                 const js = decodeURIComponent(options.jsToInject);
                 await page.evaluate(js);
-                await frkBulk.Time.sleep(100);
+                await frkBulk.Time.sleep(500);
                 if (navigationTriggered) {
                     await page.waitForNavigation({ waitUntil: 'networkidle0' });
                 }
@@ -77,14 +86,23 @@ export async function main(context, req) {
         // page height in browser 
         const pageHeight = await page.evaluate(() =>  window.document.body.offsetHeight || window.document.body.scrollHeight);
 
-        screenshotBuffer = await page.screenshot({
-            clip: {
+        console.log('pageHeight', pageHeight);
+
+        const screenshotOptions = {
+            fullPage: true,
+        };
+
+        if (pageHeight > 800) {
+            screenshotOptions.fullPage = false;
+            screenshotOptions.clip = {
                 x: 0,
                 y: 0,
                 width: options.width,
                 height: pageHeight,
-            },
-        });
+            };
+        }
+
+        screenshotBuffer = await page.screenshot(screenshotOptions);
 
         context.log(`All done. ✨`);
 

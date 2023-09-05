@@ -10,10 +10,13 @@ import {default as desktopConfig} from 'lighthouse/core/config/lr-desktop-config
 import {default as mobileConfig} from 'lighthouse/core/config/lr-mobile-config.js';
 import {lighthouseVersion} from 'lighthouse/root.js';
 import fp from 'find-free-port';
+import { parseCookies } from '../lib/http/request.js';
 
 const DEFAULT_INPUT_PARAMETERS = {
     url:            "https://google.com/",
     output:         "html",
+    numRuns:        3,
+    type:           "desktop",
 };
 
 export async function main(context, req) {
@@ -23,16 +26,19 @@ export async function main(context, req) {
     const options = {
         url: req.query?.url || DEFAULT_INPUT_PARAMETERS.url,
         output: req.query?.output || DEFAULT_INPUT_PARAMETERS.output,
+        numRuns: req.query?.numRuns || DEFAULT_INPUT_PARAMETERS.numRuns,
+        type: req.query?.type || DEFAULT_INPUT_PARAMETERS.type,
     };
 
     context.log('options', options);
 
     let browser;
+    let page;
 
     const port = await fp(9222);
 
     try {
-        [ browser ] = await frkBulk.Puppeteer.initBrowser({
+        [ browser, page ] = await frkBulk.Puppeteer.initBrowser({
             port,
             headless: true,
             extraArgs: [
@@ -46,11 +52,27 @@ export async function main(context, req) {
             ],
         });
         
-        const lhOptions = { logLevel: 'error', output: options.output, port};
+        if (Object.keys(req.headers).includes('x-set-cookie')) {
+            const cookies = parseCookies(options.url, req.headers['x-set-cookie']);
+            console.log('cookies', cookies);
+            await page.setCookie(...cookies);
+        }
+
+        const lhOptions = {
+            logLevel: 'error',
+            output: options.output,
+            disableFullPageScreenshot: true,
+        };
+
+        const lhConfig = options.type === 'desktop' ? desktopConfig : mobileConfig;
+        lhConfig.settings.onlyCategories = ['accessibility', 'best-practices', 'performance', 'seo'];
+
+        console.log(`Running Lighthouse ${lighthouseVersion}...`);
+        console.log(lhConfig);
 
         let runnerResult;
-        for (var i = 0; i < 3; i++) {
-            runnerResult = await lighthouse(options.url, lhOptions, desktopConfig);
+        for (var i = 0; i < options.numRuns; i++) {
+            runnerResult = await lighthouse(options.url, lhOptions, lhConfig, page);
         }
 
         // `.report` is the HTML report as a string
@@ -80,17 +102,11 @@ export async function main(context, req) {
 const USAGE_MESSAGE = `
 Run a Lighthouse analysis
 
-Method: POST
+Method: GET
 
-JSON Input Body:
-
-    {
-        url:            "<url>",    // required
-    }
-
-    Example
-
-    {
-        url:            "https://www.adobe.com",
-    }
+Query String Parameters:
+* url:      <url>               // required
+* output:   html | json,        // optional, default: "html"
+* numRuns:  <number>            // optional, default: 3
+* type:     desktop | mobile    // optional, default: "desktop"
 `;
