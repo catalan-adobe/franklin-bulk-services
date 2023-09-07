@@ -154,6 +154,58 @@ export class EaaSProvider {
       });
     }
   }
+
+  /**
+   * waitForJSONReport - wait for a LH Task to finish and return the JSON report
+   * 1. poll check LH task status until completion
+   * 2. download LH JSON report
+   *
+   * @param {string} lhTaskId - the existing EaaS LH Task ID
+   * @returns {Promise<Response>}
+   */
+  async waitForJSONReport(lhTaskId) {
+    try {
+      // 1. poll check (every 5s, timeout after 5min)
+      const timeout = 300000;
+      const retryDelay = 2000;
+
+      const lhTaskStatus = await new Promise((resolve, reject) => {
+        const start = Date.now();
+        const check = async () => {
+          const lhTask = await this.readLHTask(lhTaskId);
+          console.log(`Lighthouse task status: ${lhTask.status} ⏳`);
+          if (lhTask.completed) {
+            resolve(lhTask);
+          } else if (Date.now() - start > timeout) {
+            reject(new Error('timeout'));
+          } else {
+            setTimeout(check, retryDelay);
+          }
+        };
+        check();
+      });
+
+      // 2. get report
+      const lhReportUrl = lhTaskStatus.scores?.pages[0]?.reportLink?.href;
+      if (!lhReportUrl) {
+        throw new Error(`no report url for eaas lh task ${lhTask.id}`);
+      }
+
+      const reportResp = await fetch(lhReportUrl);
+      const report = await reportResp.text();
+
+      return new Response(report, {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    } catch (e) {
+      return new Response(e.message, {
+        status: e.response?.status || 500,
+      });
+    }
+  }
 }
 
 export class EaaSClient {
@@ -188,6 +240,7 @@ export class EaaSClient {
   async readLHTask(taskID) {
     const accessToken = await this.auth.obtainToken();
     const lhTaskUrl = `${this.eaasEndpoint}/v1/tasks/lh/${taskID}?status=pending`;
+
     const response = await fetch(lhTaskUrl, {
       headers: EaaSClient.#headers(accessToken),
     });
