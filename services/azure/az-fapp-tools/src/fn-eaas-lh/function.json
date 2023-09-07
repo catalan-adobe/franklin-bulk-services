@@ -4,10 +4,9 @@
       "authLevel": "anonymous",
       "type": "httpTrigger",
       "direction": "in",
-      "name": "req",
+      "name": "eaasLHTask",
       "methods": [
-        "get",
-        "post"
+        "get"
       ]
     },
     {
