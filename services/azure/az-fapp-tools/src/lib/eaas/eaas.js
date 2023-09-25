@@ -18,24 +18,52 @@ export class ImsService2ServiceAuth {
     this.clientId = clientId;
     this.clientSecret = clientSecret;
     this.scopes = scopes;
+    this._token = null;
+  }
+
+  async token() {
+    if (!this._token) {
+      this._token = await this.obtainToken();
+    }
+    return this._token;
   }
 
   async obtainToken() {
     const url = `${this.imsUrl}/ims/token/v3`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        grant_type: 'client_credentials',
-        scope: this.scopes,
-      }).toString(),
+
+    const token = await new Promise((resolve, reject) => {
+      const timeout = 30000;
+      const retryDelay = 1000;
+      const start = Date.now();
+      const check = async () => {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            client_id: this.clientId,
+            client_secret: this.clientSecret,
+            grant_type: 'client_credentials',
+            scope: this.scopes,
+          }).toString(),
+        });
+        
+        console.log(`EaaS login: ${response.status} ⏳`);
+
+        if (response.ok) {
+          const jsonResponse = await response.json();
+          resolve(jsonResponse.access_token);
+        } else if (Date.now() - start > timeout) {
+          reject(new Error('timeout'));
+        } else {
+          setTimeout(check, retryDelay);
+        }
+      };
+      check();
     });
-    const jsonResponse = await response.json();
-    return jsonResponse.access_token;
+
+    return token;
   }
 }
 
@@ -114,9 +142,9 @@ export class EaaSProvider {
 
       console.log(`Lighthouse task started. 🚀`, lhTask);
 
-      // 2. poll check (every 5s, timeout after 2min)
+      // 2. poll check (every 1s, timeout after 2min)
       const timeout = 30000;
-      const retryDelay = 2000;
+      const retryDelay = 1000;
       const lhTaskStatus = await new Promise((resolve, reject) => {
         const start = Date.now();
         const check = async () => {
@@ -139,8 +167,25 @@ export class EaaSProvider {
         throw new Error(`no report url for eaas lh task ${lhTask.id}`);
       }
 
-      const reportResp = await fetch(lhReportUrl);
-      const report = await reportResp.text();
+      const repTimeout = 10000;
+      const repRetryDelay = 1000;
+      const report = await new Promise((resolve, reject) => {
+        const start = Date.now();
+        const check = async () => {
+          console.log(`Fetch Lighthouse report: ${lhTask.status} ⏳`);
+          const reportResp = await fetch(lhReportUrl);
+          if (reportResp.ok) {
+            const LHReport = await reportResp.text();
+            const report = `{ "lighthouseResult" : ${LHReport} }`;
+            resolve(report);
+          } else if (Date.now() - start > repTimeout) {
+            reject(new Error('timeout'));
+          } else {
+            setTimeout(check, repRetryDelay);
+          }
+        };
+        check();
+      });
 
       return new Response(report, {
         status: 200,
@@ -255,7 +300,9 @@ export class EaaSClient {
   }
 
   async readLHTask(taskID) {
-    const accessToken = await this.auth.obtainToken();
+    console.log(`EaaS readLHTask: ${taskID}`);
+
+    const accessToken = await this.auth.token();
     const lhTaskUrl = `${this.eaasEndpoint}/v1/tasks/lh/${taskID}?status=pending`;
 
     const response = await fetch(lhTaskUrl, {
@@ -267,7 +314,9 @@ export class EaaSClient {
   }
 
   async startLHTask(url, options = {}) {
-    const accessToken = await this.auth.obtainToken();
+    console.log(`EaaS startLHTask for url ${url}`);
+
+    const accessToken = await this.auth.token();
     const lhTasksUrl = `${this.eaasEndpoint}/v1/tasks/lh`;
 
     const u = new URL(url);
