@@ -259,7 +259,7 @@ export class EaaSClient {
 
     const payload = {
       service: {
-        type: 'AEM',
+        type: 'Franklin',
         id: 'hlx-test',
         url: host,
         runmodes: ['publish'],
