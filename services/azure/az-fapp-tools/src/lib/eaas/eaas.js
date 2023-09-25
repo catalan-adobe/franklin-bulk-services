@@ -191,8 +191,25 @@ export class EaaSProvider {
         throw new Error(`no report url for eaas lh task ${lhTask.id}`);
       }
 
-      const reportResp = await fetch(lhReportUrl);
-      const report = await reportResp.text();
+      const report = await new Promise((resolve, reject) => {
+        const timeout = 30000;
+        const retryDelay = 1000;
+        const start = Date.now();
+        const check = async () => {
+          const reportResp = await fetch(lhReportUrl);
+          console.log(`Fetching Lighthouse JSON report: ${reportResp.status} ⏳`);
+          if (reportResp.ok) {
+            const lighthouseResult = await reportResp.text();
+            const report = `{ "lighthouseResult" : ${lighthouseResult} }`;  
+            resolve(report);
+          } else if (Date.now() - start > timeout) {
+            reject(new Error('timeout'));
+          } else {
+            setTimeout(check, retryDelay);
+          }
+        };
+        check();
+      });
 
       return new Response(report, {
         status: 200,
