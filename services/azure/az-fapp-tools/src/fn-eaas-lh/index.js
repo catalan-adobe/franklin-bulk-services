@@ -13,6 +13,7 @@ export async function main(context, req) {
     };
 
     try {
+
         // Login to EaaS API
         const imsService2ServiceAuth = new ImsService2ServiceAuth(
           process.env.IMS_ENDPOINT,
@@ -57,12 +58,13 @@ export async function main(context, req) {
 
             context.log(`Lighthouse done. ✨`);
     
-            const report = await response.text();
+            const report = await response.json();
 
             context.res = {
                 body: report,
                 headers: {
                     'content-type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
                 }
             };      
         }
