@@ -165,7 +165,7 @@ export class EaaSProvider {
    */
   async waitForJSONReport(lhTaskId) {
     try {
-      // 1. poll check (every 5s, timeout after 5min)
+      // 1. poll check (every 2s, timeout after 5min)
       const timeout = 300000;
       const retryDelay = 2000;
 
