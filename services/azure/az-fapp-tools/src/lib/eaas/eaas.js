@@ -11,6 +11,7 @@
  */
 /* eslint-disable max-classes-per-file */
 import { fetch } from '../fetch.js';
+import { extractHelixUrls } from '../franklin.js';
 
 export class ImsService2ServiceAuth {
   constructor(imsUrl, clientId, clientSecret, scopes) {
@@ -48,8 +49,6 @@ export class ImsService2ServiceAuth {
             scope: this.scopes,
           }).toString(),
         });
-        
-        console.log(`EaaS login: ${response.status} ⏳`);
 
         if (response.ok) {
           const jsonResponse = await response.json();
@@ -123,81 +122,8 @@ export class EaaSProvider {
   }
 
   async startLHTask(url, options = {}) {
-    return new EaaSProviderTask(await this.eaasClient.startLHTask(url, options));
-  }
-
-  /**
-   * Execute a complete EaaS LH flow in a single function
-   * 1. start LH task
-   * 2. poll check LH task status until completion
-   * 3. download LH JSON report
-   *
-   * @param {string} url
-   * @returns {Promise<Response>}
-   */
-  async executeLHAnalysis(url, options = {}) {
-    try {
-      // 1. start LH task
-      const lhTask = await this.startLHTask(url, options);
-
-      console.log(`Lighthouse task started. 🚀`, lhTask);
-
-      // 2. poll check (every 1s, timeout after 2min)
-      const timeout = 30000;
-      const retryDelay = 1000;
-      const lhTaskStatus = await new Promise((resolve, reject) => {
-        const start = Date.now();
-        const check = async () => {
-          console.log(`Lighthouse task status: ${lhTask.status} ⏳`);
-          const status = await this.readLHTask(lhTask.id);
-          if (status.completed) {
-            resolve(status);
-          } else if (Date.now() - start > timeout) {
-            reject(new Error('timeout'));
-          } else {
-            setTimeout(check, retryDelay);
-          }
-        };
-        check();
-      });
-
-      // 3. get report
-      const lhReportUrl = lhTaskStatus.scores?.pages[0]?.reportLink?.href;
-      if (!lhReportUrl) {
-        throw new Error(`no report url for eaas lh task ${lhTask.id}`);
-      }
-
-      const repTimeout = 10000;
-      const repRetryDelay = 1000;
-      const report = await new Promise((resolve, reject) => {
-        const start = Date.now();
-        const check = async () => {
-          console.log(`Fetch Lighthouse report: ${lhTask.status} ⏳`);
-          const reportResp = await fetch(lhReportUrl);
-          if (reportResp.ok) {
-            const LHReport = await reportResp.text();
-            const report = `{ "lighthouseResult" : ${LHReport} }`;
-            resolve(report);
-          } else if (Date.now() - start > repTimeout) {
-            reject(new Error('timeout'));
-          } else {
-            setTimeout(check, repRetryDelay);
-          }
-        };
-        check();
-      });
-
-      return new Response(report, {
-        status: 200,
-        headers: {
-          'content-type': 'application/json',
-        },
-      });
-    } catch (e) {
-      return new Response(e.message, {
-        status: e.response?.status || 500,
-      });
-    }
+    const taskId = await this.eaasClient.startLHTask(url, options);
+    return taskId;
   }
 
   /**
@@ -217,14 +143,20 @@ export class EaaSProvider {
       const lhTaskStatus = await new Promise((resolve, reject) => {
         const start = Date.now();
         const check = async () => {
-          const lhTask = await this.readLHTask(lhTaskId);
-          console.log(`Lighthouse task status: ${lhTask.status} ⏳`);
-          if (lhTask.completed) {
-            resolve(lhTask);
-          } else if (Date.now() - start > timeout) {
-            reject(new Error('timeout'));
-          } else {
-            setTimeout(check, retryDelay);
+          let lhTask = null;
+          try {
+            lhTask = await this.readLHTask(lhTaskId);
+            this.eaasClient.logger(`Lighthouse task status: ${lhTask.status} ⏳`);
+          } catch (e) {
+            this.eaasClient.logger.error(`Error reading EaaS LH Task ${lhTaskId}: ${e}`)
+          } finally {
+            if (lhTask && lhTask.completed) {
+              resolve(lhTask);
+            } else if (Date.now() - start > timeout) {
+              reject(new Error('timeout waiting for EaaS LH Task to complete'));
+            } else {
+              setTimeout(check, retryDelay);
+            }
           }
         };
         check();
@@ -242,13 +174,13 @@ export class EaaSProvider {
         const start = Date.now();
         const check = async () => {
           const reportResp = await fetch(lhReportUrl);
-          console.log(`Fetching Lighthouse JSON report: ${reportResp.status} ⏳`);
+          this.eaasClient.logger(`Fetching Lighthouse JSON report: ${reportResp.status} ⏳`);
           if (reportResp.ok) {
             const lighthouseResult = await reportResp.text();
             const report = `{ "lighthouseResult" : ${lighthouseResult} }`;  
             resolve(report);
           } else if (Date.now() - start > timeout) {
-            reject(new Error('timeout'));
+            reject(new Error('timeout fetching Lighthouse JSON report'));
           } else {
             setTimeout(check, retryDelay);
           }
@@ -263,6 +195,7 @@ export class EaaSProvider {
         },
       });
     } catch (e) {
+      this.eaasClient.logger.error(`Error waiting for JSON report for EaaS LH Task ${lhTaskId}: ${e}`);
       return new Response(e.message, {
         status: e.response?.status || 500,
       });
@@ -271,14 +204,16 @@ export class EaaSProvider {
 }
 
 export class EaaSClient {
-  constructor(eaasEndpoint, auth) {
+  constructor(eaasEndpoint, auth, logger = console) {
     this.eaasEndpoint = eaasEndpoint;
     this.auth = auth;
+    this.logger = logger;
   }
 
   static #taskIdFromStartTaskResponse(response) {
     /* eslint-disable no-underscore-dangle */
-    return response._links['lh:task'].href.replace('/v1/tasks/lh/', '').split('?')[0];
+    const taskId = response._links['lh:task'].href.replace('/v1/tasks/lh/', '').split('?')[0];
+    return taskId;
   }
 
   static #checkStatus(response, expectedStatus) {
@@ -300,7 +235,7 @@ export class EaaSClient {
   }
 
   async readLHTask(taskID) {
-    console.log(`EaaS readLHTask: ${taskID}`);
+    this.logger(`EaaSClient readLHTask: ${taskID}`);
 
     const accessToken = await this.auth.token();
     const lhTaskUrl = `${this.eaasEndpoint}/v1/tasks/lh/${taskID}?status=pending`;
@@ -314,42 +249,64 @@ export class EaaSClient {
   }
 
   async startLHTask(url, options = {}) {
-    console.log(`EaaS startLHTask for url ${url}`);
+    try {
+      const accessToken = await this.auth.token();
+      const lhTasksUrl = `${this.eaasEndpoint}/v1/tasks/lh`;
+      
+      const u = new URL(url);
+      const origin = u.origin;
+      const page = u.pathname + u.search + u.hash;
+      
+      let serviceId = u.host.replace('www.', '');
+      const franklinUrls = extractHelixUrls(url);
+      if (franklinUrls.length > 0) {
+        serviceId = `${franklinUrls[0].repo}--${franklinUrls[0].owner}`;
+      }
+      
+      this.logger(`EaaSClient startLHTask for url ${url} (serviceId: ${serviceId})`);
 
-    const accessToken = await this.auth.token();
-    const lhTasksUrl = `${this.eaasEndpoint}/v1/tasks/lh`;
-
-    const u = new URL(url);
-    const host = u.origin;
-    const page = u.pathname + u.search + u.hash;
-
-    const payload = {
-      service: {
-        type: 'Franklin',
-        id: 'hlx-test',
-        url: host,
-        runmodes: ['publish'],
-        users: [
-          {
-            role: 'admin',
-            credentials: {
-              type: 'basic',
-              user: options.authToken ? 'hlx-auth-token' : 'admin',
-              password: options.authToken || 's3cr3t',
+      const payload = {
+        service: {
+          type: options.type,
+          id: serviceId,
+          url: origin,
+          runmodes: ['publish'],
+          users: [
+            {
+              role: 'admin',
+              credentials: {
+                type: 'basic',
+                user: options.authToken ? 'hlx-auth-token' : 'admin',
+                password: options.authToken || 's3cr3t',
+              },
             },
-          },
-        ],
-      },
-      pages: [page],
-    };
+          ],
+        },
+        pages: [page],
+      };
+  
+      this.logger(`EaaSClient startLHTask payload: ${JSON.stringify(payload)}`);
 
-    const response = await fetch(lhTasksUrl, {
-      headers: EaaSClient.#headers(accessToken),
-      method: 'post',
-      body: JSON.stringify(payload),
-    });
-
-    EaaSClient.#checkStatus(response, 202);
-    return this.readLHTask(EaaSClient.#taskIdFromStartTaskResponse(await response.json()));
+      const response = await fetch(lhTasksUrl, {
+        headers: EaaSClient.#headers(accessToken),
+        method: 'post',
+        body: JSON.stringify(payload),
+      });
+  
+      if (!response.ok) {
+        throw new Error(`EaaSClient startLHTask http response not ok: ${response.status} ${response.statusText}`);
+      }
+  
+      EaaSClient.#checkStatus(response, 202);
+  
+      const respJson = await response.json();
+  
+      const taskId = EaaSClient.#taskIdFromStartTaskResponse(respJson);
+      this.logger(`EaaS LH Task started. taskId: ${taskId}`);
+      return taskId;
+    } catch (e) {
+      this.logger.error(`EaaSClient startLHTask error: ${e}`);
+      throw new Error(`EaaS startLHTask error: ${e}`);
+    }
   }
 }
