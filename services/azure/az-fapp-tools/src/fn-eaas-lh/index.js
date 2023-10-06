@@ -36,16 +36,18 @@ export async function main(context, req) {
             let eaasOptions = {
                 type: EAAS_LH_TASK_TYPE_AEM,
             };
+
+            // detect Helix Bot Requests
+            if (req.headers['user-agent'] && req.headers['user-agent'].includes('adobe-fetch')) {
+                eaasOptions.type = EAAS_LH_TASK_TYPE_FRANKLIN;
+            }
+
             // detect request for an authenticated page
             if (Object.keys(req.headers).includes('x-set-cookie')) {
                 const cookies = parseCookies(options.url, req.headers['x-set-cookie']);
                 if (cookies.length > 0) {
-                    eaasOptions = { authToken: cookies[0].value };
+                    eaasOptions.authToken = cookies[0].value;
                 }
-            }
-            // detect Helix Bot Requests
-            if (req.headers['user-agent'] && req.headers['user-agent'].includes('adobe-fetch')) {
-                eaasOptions.type = EAAS_LH_TASK_TYPE_FRANKLIN;
             }
 
             // start LH task
@@ -53,7 +55,7 @@ export async function main(context, req) {
                 options.url,
                 eaasOptions,
             );
-    
+
             // redirection url
             const u = new URL(req.url);
             let origin = u.origin;
