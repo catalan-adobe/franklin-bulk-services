@@ -8,7 +8,7 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
-    "@adobe/fetch": "4.0.13",
+    "@adobe/fetch": "4.1.1",
     "@adobe/helix-shared-utils": "3.0.0",
     "find-free-port": "^2.0.0",
     "franklin-bulk-shared": "1.13.3",
