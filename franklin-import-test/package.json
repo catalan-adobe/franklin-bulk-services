@@ -1,6 +1,0 @@
-{
-  "type": "module",
-  "dependencies": {
-    "franklin-importer-shared": "file:../shared"
-  }
-}
