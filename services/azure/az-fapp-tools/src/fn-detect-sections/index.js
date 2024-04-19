@@ -3,10 +3,11 @@ import fs from 'fs';
 
 
 const ADOBE_DETECT_LIB_PATH = './lib/vendors/adobe-detects.min.js'
+const PAGE_WIDTH = 1280;
 
 const DEFAULT_INPUT_PARAMETERS = {
     url:            'https://google.com/',
-    width:          1280,
+    width:          PAGE_WIDTH,
     adBlocker:      true,
     gdprBlocker:    true,
     delay:          0,
@@ -38,7 +39,7 @@ export async function main(context, req) {
 
     try {
         [browser, page] = await frkBulk.Puppeteer.initBrowser({
-            width: 1280,
+            width: options.width,
             adBlocker: true,
             gdprBlocker: true,
             headless: true,
@@ -60,14 +61,28 @@ export async function main(context, req) {
         
         // force scroll the page to trigger potential lazy loading
         await frkBulk.Puppeteer.smartScroll(page, { postReset: true });
+        // pacing delay for possible CLS
+        await frkBulk.Time.sleep(1000);
 
         // page height in browser 
         const pageHeight = await page.evaluate(() => window.document.body.offsetHeight || window.document.body.scrollHeight);
         console.log('pageHeight', pageHeight);
 
         // detect sections
-        await page.evaluate(() => window.xp.detectSections(document.body, window));
-        const boxes = await page.evaluate(() =>  window.xp.boxes);
+        await page.evaluate(async () => await window.xp.detectSections(document.body, window));
+
+        const boxes = await page.evaluate(() => {
+            function cleanupBox(box) {
+                delete box.div;
+                if (box.children && box.children.length > 0) {
+                    box.children.forEach(cleanupBox);
+                }
+            }
+            if (window.xp.boxes) {
+                cleanupBox(window.xp.boxes);
+            }
+            return window.xp.boxes || [];
+        });
 
         // get template
         const template = await page.evaluate(() => window.xp.template || null);
@@ -77,9 +92,18 @@ export async function main(context, req) {
             template,
             pageHeight,
         };
-        
+
         if (options.screenshot) {
-            responseBody.screenshot = await page.screenshot({ fullPage: true, type: 'png', encoding: 'base64' });
+            await page.setViewport({
+                width: options.width,
+                height: pageHeight,
+                deviceScaleFactor: 1,
+            });
+            responseBody.screenshot = await page.screenshot({
+                fullPage: true,
+                type: 'png',
+                encoding: 'base64',
+            });
         }
         context.res = {
             body: responseBody,
