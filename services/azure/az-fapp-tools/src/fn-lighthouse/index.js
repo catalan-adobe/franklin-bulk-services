@@ -16,7 +16,7 @@ const DEFAULT_INPUT_PARAMETERS = {
     url:            "https://google.com/",
     output:         "html",
     numRuns:        3,
-    type:           "desktop",
+    type:           "mobile",
 };
 
 export async function main(context, req) {
