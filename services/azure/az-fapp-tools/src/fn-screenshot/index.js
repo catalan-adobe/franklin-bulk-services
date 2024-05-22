@@ -50,7 +50,7 @@ export async function main(context, req) {
             await page.setCookie(...cookies);
         }
 
-        await page.goto(options.url, { waitUntil: 'networkidle0' });
+        await page.goto(options.url, { waitUntil: 'networkidle2' });
         
         if (options.delay > 0) {
             await frkBulk.Time.sleep(options.delay);
@@ -69,12 +69,12 @@ export async function main(context, req) {
                         interceptedRequest.continue();
                     }
                 });
-                          
+
                 const js = decodeURIComponent(options.jsToInject);
                 await page.evaluate(js);
                 await frkBulk.Time.sleep(500);
                 if (navigationTriggered) {
-                    await page.waitForNavigation({ waitUntil: 'networkidle0' });
+                    await page.waitForNavigation({ waitUntil: 'networkidle2' });
                 }
             } catch (e) {
                 context.log.error(e);
@@ -82,6 +82,9 @@ export async function main(context, req) {
         }
         
         await frkBulk.Puppeteer.smartScroll(page, { postReset: true });
+
+        // pacing down after scrolling
+        await frkBulk.Time.sleep(2500);
 
         // page height in browser 
         const pageHeight = await page.evaluate(() =>  window.document.body.offsetHeight || window.document.body.scrollHeight);
@@ -149,10 +152,10 @@ JSON Input Body:
     Example
 
     {
-        url:            "https://www.adobe.com",
-        width:          1440,
-        adBlocker:      true,
-        gdprBlocker:    false,
-        jsToInject:     "document.querySelector('locale-modal a.dexter-CloseButton').click();"
+        "url":            "https://business.adobe.com",
+        "width":          1280,
+        "adBlocker":      true,
+        "gdprBlocker":    true,
+        "jsToInject":     "document.querySelector('.dialog-modal .dialog-close')?.click();"
     }
 `;
