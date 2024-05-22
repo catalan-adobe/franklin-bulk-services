@@ -16,7 +16,7 @@
     "@adobe/fetch": "4.1.2",
     "@adobe/helix-shared-utils": "3.0.2",
     "find-free-port": "2.0.0",
-    "franklin-bulk-shared": "1.17.1",
+    "franklin-bulk-shared": "1.18.2",
     "lighthouse": "12.0.0",
     "zip-lib": "1.0.4"
   }
