@@ -98,15 +98,3 @@ export async function main(context, req) {
         }
     }
 };
-
-const USAGE_MESSAGE = `
-Run a Lighthouse analysis
-
-Method: GET
-
-Query String Parameters:
-* url:      <url>               // required
-* output:   html | json,        // optional, default: "html"
-* numRuns:  <number>            // optional, default: 3
-* type:     desktop | mobile    // optional, default: "desktop"
-`;
