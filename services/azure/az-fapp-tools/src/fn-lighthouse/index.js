@@ -8,7 +8,7 @@ import * as frkBulk from 'franklin-bulk-shared';
 import lighthouse from 'lighthouse';
 import {default as desktopConfig} from 'lighthouse/core/config/lr-desktop-config.js';
 import {default as mobileConfig} from 'lighthouse/core/config/lr-mobile-config.js';
-import {lighthouseVersion} from 'lighthouse/root.js';
+import {lighthouseVersion} from 'lighthouse/shared/root.js';
 import fp from 'find-free-port';
 import { parseCookies } from '../lib/http/request.js';
 
