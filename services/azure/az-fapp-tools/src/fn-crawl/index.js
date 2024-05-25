@@ -1,5 +1,4 @@
 import * as frkBulk from 'franklin-bulk-shared';
-import { parseCookies } from '../lib/http/request.js';
 
 const DEFAULT_CRAWL_OPTIONS = {
     timeout: 10000,
@@ -26,12 +25,6 @@ export async function main(context, req) {
         warn: context.log.warn,
         error: context.log.error,
     };
-    
-    // await frkBulk.Time.sleep(2500);
-    // context.log('options', context.log.debug);
-    // context.log('options', context.log.trace);
-    // context.log('options', Object.keys(context.log));
-    // await frkBulk.Time.sleep(2500);
 
     if (req.method === 'GET') {
         context.res = {
@@ -47,8 +40,6 @@ export async function main(context, req) {
     try {
         const urls = await frkBulk.Web.crawl(req.body.url, options);
         
-        context.log(`Crawled ${urls.length} URLs`);
-        context.log(urls);
         context.log(`All done. ✨`);
         
         context.res = {
