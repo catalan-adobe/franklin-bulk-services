@@ -269,26 +269,39 @@ Imports a web page into a docx file using the Helix Importer (with a default imp
 ## JSON Input Body
 
     {
-        url:            string,             // required - the url to import
-        width:          <width>,            // the viewport width of the browser (in pixels)
-                                            // default: 1280
-        adBlocker:      true|false,         // enable ad blocker plugin
-                                            // default: true
-        gdprBlocker:    true|false,         // enable gdpr blocker plugin
-                                            // default: true
-        delay:          <delay>,            // forced waiting time after page load (in ms.)
-                                            // default: 0 (no delay)
-        disableJs:      true|false,         // disable JS execution in the browser
-                                            // default: true
-        screenshotQuality: "normal"|"low"   // screenshot quality
-                                            //   * normal: png file
-                                            //   * low: jpeg file, 10% quality
-                                            // default: normal
+        "url":            string,               // required - the url to import
+
+        "resources": {                          // optional - resources to include in the zip file
+                                                // default: only docx
+            "docx":             true|false,     // include the docx file
+                                                // default: true
+            "md":               true|false,     // include the markdown file
+                                                // default: false
+            "screenshot":       true|false,     // include a screenshot of the page
+                                                // default: false
+            "config":           true|false,     // include the import json configuration
+                                                // default: false
+        },
+        
+        "width":                <width>,        // the viewport width of the browser (in pixels)
+                                                // default: 1280
+        "adBlocker":            true|false,     // enable ad blocker plugin
+                                                // default: true
+        "gdprBlocker":          true|false,     // enable gdpr blocker plugin
+                                                // default: true
+        "delay":                <delay>,        // forced waiting time after page load (in ms.)
+                                                // default: 0 (no delay)
+        "disableJs":            true|false,     // disable JS execution in the browser
+                                                // default: true
+        "screenshotQuality":    "normal"|"low"  // screenshot quality
+                                                //   * normal: png file
+                                                //   * low: jpeg file, 10% quality
+                                                // default: normal
     }
 
 ## Examples
 
-### Import a page a get only the docx result
+### Import a page with javascript enabled and get only the docx result
 
     {
         "url":            "https://www.adobe.com",
@@ -297,7 +310,7 @@ Imports a web page into a docx file using the Helix Importer (with a default imp
 
     Returns docx binary content
 
-### Import a page and get all resources
+### Import a page and get all resources (javascript disabled)
 
     {
         "url":            "https://www.adobe.com",
