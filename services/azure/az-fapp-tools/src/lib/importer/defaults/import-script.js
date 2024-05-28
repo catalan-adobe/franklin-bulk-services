@@ -60,7 +60,7 @@ export default {
     WebImporter.rules.createMetadata(main, document);
     WebImporter.rules.transformBackgroundImages(main, document);
     WebImporter.rules.adjustImageUrls(main, url, params.originalURL);
-    WebImporter.rules.convertIcons(main, document);
+    // WebImporter.rules.convertIcons(main, document);
 
     return main;
   },

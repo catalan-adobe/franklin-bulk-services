@@ -4,22 +4,48 @@ import serveStatic from 'serve-static';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import fs from 'fs';
-import os from 'os';
-import zl from 'zip-lib';
+import AdmZip from 'adm-zip';
+
+import { md2docx } from '@adobe/helix-md2docx';
+import sharp from 'sharp';
 
 const DEFAULT_INPUT_PARAMETERS = {
-    url:            "https://www.adobe.com/",
-    width:          1280,
-    adBlocker:      true,
-    gdprBlocker:    true,
-    delay:          0,
-    jsToInject:     null,
-    disableJs:      true,
+    url:                'https://www.adobe.com/',
+    width:              1280,
+    adBlocker:          true,
+    gdprBlocker:        true,
+    delay:              0,
+    jsToInject:         null,
+    disableJs:          true,
+    screenshotQuality: 'normal',
+    resources:          {
+        docx:         true,
+        md:           false,
+        screenshot:   false,
+        config:       false,
+    },
 };
 
 const HELIX_IMPORTER_SCRIPT_URL = 'http://localhost:8888/helix-importer.js';
 const DEFAULT_IMPORT_SCRIPT_URL = 'http://localhost:8888/defaults/import-script.js';
+const LOW_QUALITY_MAX_SCREENSHOT_WIDTH = 800;
+
+async function image2png ({ src, data, type }) {
+    try {
+        const png = (await sharp(data))
+            .png();
+        const metadata = await png.metadata()
+        return {
+            data: png.toBuffer(),
+            width: metadata.width,
+            height: metadata.height,
+            type: 'image/png',
+        };
+    } catch (e) {
+        log(context, `Cannot convert image ${src} to png. It might corrupt the Word document and you should probably remove it from the DOM.`);
+        return null;
+    }
+};
 
 async function startHTTPServer() {
     const app = express();
@@ -52,17 +78,32 @@ async function disableJS(page) {
     );
 }
 
+async function log(context, ...args) {
+    context.log(...args);
+    await frkBulk.Time.sleep(10);
+}
+
+function buildError(context, status, message) {
+    context.log.error(`error caught: returning ${status} ${message}`);
+    return {
+        status: status,
+        headers: {
+            'x-error': message,
+        },
+        message: message,
+    };
+}
+
 export async function main(context, req) {
-    
-    context.log("Request: ", req);
-    
+    log(context, 'request', req);
+
     const options = {
         ...DEFAULT_INPUT_PARAMETERS,
         ...req.body,
     };
-    
-    context.log('options', options);
-    
+
+    log(context, 'options', options);
+
     if (req.method === 'GET') {
         context.res = {
             body: USAGE_MESSAGE,
@@ -73,21 +114,13 @@ export async function main(context, req) {
         context.done();
         return new Promise(() => {}).resolve();
     }
-    
-    // output directory
-    const outputDir = path.join(os.tmpdir(), `import-${new Date().toISOString().replaceAll(/[:.]/g, '-')}`);
-    context.log(`output dir: ${outputDir}`);
-    if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-    }
 
     // http server to serve the import script
     const httpServer = await startHTTPServer();
-    
+
     let browser;
     let page;
-    let screenshotBuffer;
-    
+
     try {
         [browser, page] = await frkBulk.Puppeteer.initBrowser({
             width: options.width,
@@ -95,146 +128,121 @@ export async function main(context, req) {
             gdprBlocker: options.gdprBlocker,
             headless: true,
         });
-        
-        
+
         // disable JS
         if (options.disableJs) {
             await disableJS(page);
         }
-        
+
         // force bypass CSP
         await page.setBypassCSP(true);
-        
+
         const resp = await page.goto(options.url, { waitUntil: 'networkidle2' });
-        
+
         // compute status
         if (resp.status() >= 400) {
-            // error -> stop + do not retry
-            // importResult.status = 'error';
-            // importResult.message = `status code ${resp.status()}`;
-            // importResult.retries = 0;
+            // error -> return
+            context.res = buildError(context, 500, `error loading ${options.url} returns http status ${resp.status()} ${resp.statusText()}`);
         } else if (resp.request()?.redirectChain()?.length > 0) {
-            // redirect -> stop
-            // importResult.status = 'redirect';
-            // importResult.message = `redirected to ${resp.url()}`;
+            // redirect -> return
+            context.res = buildError(context, 500, `${options.url} is a redirect to ${resp.url()}, do not import it`);
         } else {
+            const outputResources = [];
+            // compute filename
+            const u = new URL(options.url);
+            const filename = u.pathname.replace(path.extname(u.pathname), '');
+
             // ok -> proceed
             if (!options.disableJs) {
                 await frkBulk.Puppeteer.smartScroll(page, { postReset: true });
             }
-            
-            // page height in browser 
-            const pageHeight = await page.evaluate(() =>  window.document.body.offsetHeight || window.document.body.scrollHeight);
-            
-            console.log('pageHeight', pageHeight);
-            
-            const screenshotOptions = {
-                fullPage: true,
-            };
-            
-            if (pageHeight > 800) {
-                screenshotOptions.fullPage = false;
-                screenshotOptions.clip = {
-                    x: 0,
-                    y: 0,
-                    width: options.width,
-                    height: pageHeight,
+
+            if (options.resources?.screenshot) {
+                // add a screenshot of the page
+                const screenshotOptions = {
+                    fullPage: true,
                 };
+                if (options.screenshotQuality === 'low') {
+                    screenshotOptions.type = 'jpeg';
+                    screenshotOptions.quality = 10;
+                    screenshotOptions.optimizeForSpeed = true;
+                }
+                const screenshotBuffer = await page.screenshot(screenshotOptions);
+                if (options.screenshotQuality === 'low' && options.width > LOW_QUALITY_MAX_SCREENSHOT_WIDTH) {
+                    screenshotBuffer = await sharp(screenshotBuffer).resize(LOW_QUALITY_MAX_SCREENSHOT_WIDTH).toBuffer();
+                }
+                outputResources.push({
+                    filename: `${filename}-viewport-screenshot.${options.screenshotQuality === 'low' ? 'jpeg' : 'png'}`,
+                    buffer: screenshotBuffer,
+                });
             }
-            
-            screenshotBuffer = await page.screenshot(screenshotOptions);
-            
-            const u = new URL(options.url);
-            const docxPath = path.join(outputDir, path.dirname(u.pathname));
-            const client = await page.target().createCDPSession();
-            await client.send('Browser.setDownloadBehavior', {
-                behavior: 'allow',
-                downloadPath: docxPath,
-                eventsEnabled: true,
-            });
-            
-            const { filename, md } = await page.evaluate(async (helixImporterScriptURL, importScriptURL) => {
-                /* eslint-disable */
-                // code executed in the browser context
+
+            // execute the import script and get back the filename and the markdown
+            const { /*filename,*/ md } = await page.evaluate(async (helixImporterScriptURL, importScriptURL) => {
                 await import(helixImporterScriptURL);
-                
                 const customTransformConfig = await import(importScriptURL);
-                
                 // execute default import script
-                const out = await WebImporter.html2docx(location.href, document, customTransformConfig.default, {});
-                
-                // get the docx file
-                const blob = new Blob([out.docx], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-                const url = window.URL.createObjectURL(blob);
-                
-                // download the docx file
-                const filename = `${out.path.substring(out.path.lastIndexOf('/') + 1)}.docx`;
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', filename);
-                document.body.appendChild(link);
-                link.click();
-                
-                // return the filename
+                const out = await WebImporter.html2docx(location.href, document, customTransformConfig.default, { toDocx: false, toMd: true });
                 return {
-                    filename: out.path,
+                    // filename: out.path,
                     md: out.md,
                 };
-                /* eslint-enable */
             }, HELIX_IMPORTER_SCRIPT_URL, DEFAULT_IMPORT_SCRIPT_URL);
-            
-            context.log(`imported page saved to docx file ${docxPath}${filename}.docx`);
-            
-            // wait for download to complete
-            const dlPromise = new Promise((res) => {
-                client.on('Browser.downloadProgress', async ({
-                    // guid,
-                    // totalBytes,
-                    // receivedBytes,
-                    state,
-                }) => {
-                    if (state !== 'inProgress') {
-                        res(state);
-                    }
-                });
-            });
-            const dlState = await Promise.resolve(dlPromise);
-            
-            context.log(`download state: ${dlState}`);
 
-            if (!fs.existsSync(docxPath)) {
-                fs.mkdirSync(docxPath, { recursive: true });
+            if (options.resources?.md) {
+                outputResources.push({
+                    filename: `${filename}.md`,
+                    buffer: Buffer.from(md, 'utf-8'),
+                });
             }
 
-            fs.writeFileSync(`${docxPath}${filename}.md`, md);
-            fs.writeFileSync(`${docxPath}${filename}.png`, screenshotBuffer);
-            
-            // zip the files
-            const zipFilepath = path.join(outputDir, 'import.zip');
-            await zl.archiveFolder(docxPath, zipFilepath);
-            const rawFile = fs.readFileSync(zipFilepath);
-            const fileBuffer = Buffer.from(rawFile, 'base64');
+            // convert markdown to docx
+            const docx = await md2docx(md, {
+                docxStylesXML: null,
+                image2png,
+            });
+            outputResources.push({
+                filename: `${filename}.docx`,
+                buffer: docx,
+            });
 
-            /**
-            * response
-            */
-            
-            context.log(`All done. ✨`);
+            if (options.resources?.config) {
+                outputResources.push({
+                    filename: `${filename}-import-config.json`,
+                    buffer: Buffer.from(JSON.stringify(options, null, 2), 'utf-8'),
+                });
+            }
 
-            context.res = {
-                status: 202,
-                body: fileBuffer,
-                headers: {
-                    // "content-type": "image/png"
-                    "Content-Disposition": `attachment; filename=import.zip`,
-                }
-            };
+            // create zip archive with all resources
+            var zip = new AdmZip();
+            for (let { filename, buffer } of outputResources) {
+                zip.addFile(filename, buffer);
+            }
+            
+            log(context, `All done. ✨`);
+
+            // response
+            if (outputResources.length === 1 && options.resources?.docx) {
+                // only word document
+                context.res = {
+                    status: 200,
+                    body: docx,
+                    headers: {
+                        "Content-Disposition": `attachment; filename=${path.basename(filename)}.docx`,
+                    }
+                };
+            } else {
+                context.res = {
+                    status: 200,
+                    body: zip.toBuffer(),
+                    headers: {
+                        "Content-Disposition": `attachment; filename=import.zip`,
+                    }
+                };
+            }
         }
     } catch(e) {
-        context.log.error(e);
-        context.res = {
-            body: e,
-        };
+        context.res = buildError(context, 500, `fn-import error: ${e.message}, ${e.stack}`);
     } finally {
         if (httpServer) {
             // stop http server
@@ -249,32 +257,57 @@ export async function main(context, req) {
 };
 
 const USAGE_MESSAGE = `
+fn-import
+===
+
 Imports a web page into a docx file using the Helix Importer (with a default import script).
 
-Method: POST
+## Method
 
-JSON Input Body:
+    POST
 
-{
-    url:            string,     // required - the url to import
-    width:          <width>,    // the viewport width of the browser (in pixels)
-                                // default: 1280
-    adBlocker:      true|false, // enable ad blocker plugin
-                                // default: true
-    gdprBlocker:    true|false, // enable gdpr blocker plugin
-                                // default: true
-    delay:          <delay>,    // forced waiting time after page load (in ms.)
-                                // default: 0 (no delay)
-    disableJs:      true|false, // disable JS execution in the browser
-                                // default: true
-}
+## JSON Input Body
 
-Example
+    {
+        url:            string,             // required - the url to import
+        width:          <width>,            // the viewport width of the browser (in pixels)
+                                            // default: 1280
+        adBlocker:      true|false,         // enable ad blocker plugin
+                                            // default: true
+        gdprBlocker:    true|false,         // enable gdpr blocker plugin
+                                            // default: true
+        delay:          <delay>,            // forced waiting time after page load (in ms.)
+                                            // default: 0 (no delay)
+        disableJs:      true|false,         // disable JS execution in the browser
+                                            // default: true
+        screenshotQuality: "normal"|"low"   // screenshot quality
+                                            //   * normal: png file
+                                            //   * low: jpeg file, 10% quality
+                                            // default: normal
+    }
 
-{
-    url:            "https://www.adobe.com",
-    width:          1440,
-    adBlocker:      true,
-    gdprBlocker:    false,
-}
+## Examples
+
+### Import a page a get only the docx result
+
+    {
+        "url":            "https://www.adobe.com",
+        "disableJs":      false,
+    }
+
+    Returns docx binary content
+
+### Import a page and get all resources
+
+    {
+        "url":            "https://www.adobe.com",
+        "resources": {
+            "docx":         true,
+            "md":           true,
+            "screenshot":   true,
+            "config":       true,
+        }
+    }
+
+    Returns a zip file with all resources
 `;
