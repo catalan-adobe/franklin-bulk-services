@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@adobe/fetch": "4.1.8",
-    "@adobe/helix-md2docx": "2.1.56",
+    "@adobe/helix-md2docx": "2.1.63",
     "@adobe/helix-shared-utils": "3.0.2",
     "adm-zip": "0.5.14",
     "cors": "2.8.5",
