@@ -1,5 +1,3 @@
-// import * as importerLib from 'franklin-bulk-shared';
-
 // spacecat API
 // https://github.com/adobe/spacecat-api-service/blob/main/docs/openapi/schemas.yaml
 
