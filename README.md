@@ -9,6 +9,7 @@ Set of Azure functions dedicated to Franklin Import tasks
 
 Requires
 * Azure subscription
+* Azure [CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli#install)
 * Azure Functions [CLI](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local#install-the-azure-functions-core-tools)
 
 1. Build the functions
