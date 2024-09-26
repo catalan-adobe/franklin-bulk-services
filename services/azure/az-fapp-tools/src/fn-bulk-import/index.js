@@ -1,6 +1,9 @@
 // spacecat API
 // https://github.com/adobe/spacecat-api-service/blob/main/docs/openapi/schemas.yaml
 
+// Importer API - CI/Stage for now
+const IMPAAS_API_BASE_URL = 'https://spacecat.experiencecloud.live/api/ci/tools/import/jobs';
+
 const DEFAULT_IMPORT_OPTIONS = {
     pageLoadTimeout: 30000,
     enableJavascript: false,
