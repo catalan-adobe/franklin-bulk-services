@@ -13,7 +13,7 @@
     "@adobe/helix-shared-utils": "3.0.2",
     "adm-zip": "0.5.14",
     "cors": "2.8.5",
-    "express": "4.19.2",
+    "express": "4.20.0",
     "find-free-port": "2.0.0",
     "franklin-bulk-shared": "1.26.1",
     "lighthouse": "12.1.0",
