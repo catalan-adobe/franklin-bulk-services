@@ -9,7 +9,7 @@
         "get",
         "post"
       ],
-      "route": "esaas-bulk-import/job/{id?}"
+      "route": "import/bulk/default/job/{id?}"
     },
     {
       "type": "http",
