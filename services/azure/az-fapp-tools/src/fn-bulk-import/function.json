@@ -8,12 +8,13 @@
       "methods": [
         "get",
         "post"
-      ]
+      ],
+      "route": "esaas-bulk-import/job/{id?}"
     },
     {
       "type": "http",
       "direction": "out",
-      "name": "res"
+      "name": "httpOutput"
     }
   ]
 }
