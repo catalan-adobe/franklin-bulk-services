@@ -114,7 +114,7 @@ Returns
 
 ### Start Import Job
 
-`POST /api/import/bulk/default/job`
+`POST /api/v2/import/bulk/default/job`
 
 #### Parameters
 
@@ -133,7 +133,7 @@ Provided as FORM Data
 ```
 curl -v -X POST \
   -d '{ "urls": [ "https://wknd.site/us/en.html", "https://wknd.site/us/en/faqs.html" ], "target": "lpb", "username": "simon" }' \
-  <FUNCTIONS_ENDPOINT>/api/import/bulk/default/job
+  <FUNCTIONS_ENDPOINT>/api/v2/import/bulk/default/job
 ```
 
 Returns
@@ -156,7 +156,7 @@ Returns
 2. Get Job Status
 
 ```
-curl -v <FUNCTIONS_ENDPOINT>/api/import/bulk/default/job/{jobId}
+curl -v <FUNCTIONS_ENDPOINT>/api/v2/import/bulk/default/job/{jobId}
 ```
 
 Returns
