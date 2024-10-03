@@ -5,18 +5,23 @@ import { Readable } from 'stream';
 import unzipper from 'unzipper';
 import { BlobServiceClient, BlockBlobClient } from '@azure/storage-blob';
 
-// // not used for now
-// const DEFAULT_IMPORT_OPTIONS = {
-//     pageLoadTimeout: 30000,
-//     enableJavascript: false,
-// };
-
 const IMPORTER_SERVICE_CONFIGURATION = {
     apiEndpoint: 'https://spacecat.experiencecloud.live/api/v1/tools/import/jobs',
     apiKey: null,
 };
 
-const TARGET_SHAREPOINT_ROOT_URL = 'https://adobe.sharepoint.com/sites/AEMDemos/Shared%20Documents/sites/esaas-demos/lpb-imports';
+const SHAREPOINT_TARGETS = {
+    esaas: {
+        root: 'https://adobe.sharepoint.com/sites/AEMDemos',
+        path: '/Shared Documents/sites/esaas-demos/lpb-imports',
+        
+    },
+    lpb: {
+        root: 'https://adobe.sharepoint.com/sites/alturaeds',
+        path: '/Shared Documents/essaslpbeds',
+        
+    },
+};
 
 function buildErrorResponse(message) {
     return {
@@ -39,18 +44,22 @@ export async function main(context, req) {
         return;
     }
     
-    context.log('context');
-    await context.log(context);
-    
-    await Time.sleep(2000);
-    
-    context.log('req');
-    await context.log(req);
-    
     // 1. Start bulk import job on import service
     if (req.method === 'POST') {
         try {
             const urls = req.body?.urls;
+            
+            const sp_target = req.body?.target || 'esaas';
+            if (sp_target && !SHAREPOINT_TARGETS[sp_target]) {
+                context.res = {
+                    status: 400,
+                    body: buildErrorResponse('Invalid target parameter (should be "esaas" or "lpb")'),
+                };
+                return;
+            }
+            
+            const username = req.body?.username || '';
+            
             // required parameters
             if (!urls || !Array.isArray(urls) || urls.length === 0) {
                 context.res = {
@@ -62,15 +71,17 @@ export async function main(context, req) {
             
             context.log('Start bulk import job on import service');
             
-            const jobId = await impSvcStartJob(urls, IMPORTER_SERVICE_CONFIGURATION);
+            const impSvcJobId = await impSvcStartJob(urls, IMPORTER_SERVICE_CONFIGURATION);
+            const jobId = `${sp_target}_${username}_${impSvcJobId}`;
             
             const startJobResult = {
-                jobId: `esaas-bulk-import_${jobId}`,
+                jobId,
                 status: 'started',
                 message: 'Bulk import job started successfully',
+                target: sp_target,
+                username,
                 statusPath: `${req.url}/${jobId}`,
                 urls,
-                // options,
             };
             
             /*
@@ -98,7 +109,7 @@ export async function main(context, req) {
                 throw new Error('GET /api/v1/tools/import/jobs/{jobId} requires jobId parameter');
             }
             
-            const jobId = req.params.id.split('_').pop();
+            const [ sp_target, username, jobId ] = req.params.id.split('_');
             
             const status = await impSvcGetJobStatus(jobId, IMPORTER_SERVICE_CONFIGURATION);
             await Time.sleep(1000);
@@ -125,17 +136,19 @@ export async function main(context, req) {
                     throw new Error('Event Hub name and connection string are required');
                 }
                 
-                
                 const blobServiceClient = BlobServiceClient.fromConnectionString(connStr);
                 
                 // get container client for the target container
-                const azBlobContainerName = req.params.id.replaceAll('_', '-').toLowerCase();
+                const azBlobContainerName = `esaas-bulk-import-${jobId}`;
+                const spTargetFolder = req.params.id.replaceAll('_', '-').toLowerCase();
                 
                 let files = [];
                 
+                const { root, path } = SHAREPOINT_TARGETS[sp_target];
+                
                 try {
                     const containerClient = blobServiceClient.getContainerClient(azBlobContainerName);
-
+                    
                     let i = 1;
                     for await (const blob of containerClient.listBlobsFlat()) {
                         console.log(`Blob ${i++}: ${blob.name}`);
@@ -143,19 +156,19 @@ export async function main(context, req) {
                     }
                 } catch (error) {
                     context.log('Error', error);
-
+                    
                     // 2. download result archive from import service and push .docx files to Azure Blob Storage
                     files = await streamImpSvcResultArchiveAndPushDocxToAzStorage(downloadUrl, azBlobContainerName, connStr);
-
-                    await sendEventToTriggerPowerAutomateFlow(azBlobContainerName, eventHubName, eventHubConnStr);
+                    
+                    await sendEventToTriggerPowerAutomateFlow(azBlobContainerName, spTargetFolder, root, path, username, eventHubName, eventHubConnStr);
                     // force 15s. the may delay of the powerautomate flow to catch the event
                     await Time.sleep(15000);
                 }
                 
-                const results = files.map((path) => ({
-                    path,
+                const results = files.map((p) => ({
+                    p,
                     status: 'ok',
-                    location: `${TARGET_SHAREPOINT_ROOT_URL}/${azBlobContainerName}/${path}`,
+                    location: encodeURI(`${root}${path}${username ? `/${username}` : ''}/${azBlobContainerName}/${p}`),
                     message: 'Imported',
                 }));
                 
@@ -333,7 +346,7 @@ async function streamImpSvcResultArchiveAndPushDocxToAzStorage(downloadUrl, cont
     }
 }
 
-async function sendEventToTriggerPowerAutomateFlow(originFolder, eventHubName, connStr) {
+async function sendEventToTriggerPowerAutomateFlow(originFolder, targetFolder, spRoot, spFolder, username, eventHubName, connStr) {
     const producer = new EventHubProducerClient(
         connStr,
         eventHubName, {
@@ -344,8 +357,11 @@ async function sendEventToTriggerPowerAutomateFlow(originFolder, eventHubName, c
     );
     
     const eventsToSend = [{
-        'originFolder': originFolder,
-        'targetFolder': originFolder,
+        originFolder,
+        targetFolder,
+        sharepointRoot: spRoot,
+        sharepointFolder: spFolder,
+        subFolder: username ? `/${username}` : '',
     }];
     
     try {
