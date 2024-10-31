@@ -1,5 +1,9 @@
+import fs from 'fs';
+import os from 'os';
+// import path from 'path';
 import * as frkBulk from 'franklin-bulk-shared';
 import { parseCookies } from '../lib/http/request.js';
+// import puppeteer from 'puppeteer';
 
 const DEFAULT_INPUT_PARAMETERS = {
     url:            "https://google.com/",
@@ -12,7 +16,15 @@ const DEFAULT_INPUT_PARAMETERS = {
 
 export async function main(context, req) {
 
-    context.log("Request: ", req);
+    context.log(import.meta.dirname); 
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    context.log(os.homedir()); 
+    context.log(fs.existsSync('/home/site/wwwroot/.cache/puppeteer/chrome/linux-130.0.6723.69/chrome-linux64'));
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    context.log("context: ", context);
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     const options = {
         ...DEFAULT_INPUT_PARAMETERS,
@@ -20,6 +32,7 @@ export async function main(context, req) {
     };
 
     context.log('options', options);
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
     if (req.method === 'GET') {
         context.res = {
@@ -37,11 +50,25 @@ export async function main(context, req) {
     let screenshotBuffer;
 
     try {
+                
+        // const browser = await puppeteer.launch({
+        //     headless: true,
+        //     args: [
+        //         '--no-sandbox',
+        //         '--disable-setuid-sandbox'
+        //     ],
+        //     // cacheDirectory: path.join(import.meta.dirname, '../.cache/puppeteer'),
+        // });
+
+        // const page = await browser.newPage();        
+
         [browser, page] = await frkBulk.Puppeteer.initBrowser({
-            width: options.width,
+            width: 1200,
             adBlocker: options.adBlocker,
             gdprBlocker: options.gdprBlocker,
             headless: true,
+            useLocalChrome: false,
+            // executablePath: puppeteer.executablePath(),
         });
 
         if (Object.keys(req.headers).includes('x-set-cookie')) {
@@ -49,6 +76,8 @@ export async function main(context, req) {
             console.log('cookies', cookies);
             await page.setCookie(...cookies);
         }
+
+        await page.setViewport({ width: options.width, height: 1000 });
 
         await page.goto(options.url, { waitUntil: 'networkidle2' });
         
@@ -87,7 +116,7 @@ export async function main(context, req) {
         await frkBulk.Time.sleep(2500);
 
         // page height in browser 
-        const pageHeight = await page.evaluate(() =>  window.document.body.offsetHeight || window.document.body.scrollHeight);
+        const pageHeight = await page.evaluate(() => window.document.body.scrollHeight || window.document.body.offsetHeight);
 
         console.log('pageHeight', pageHeight);
 
