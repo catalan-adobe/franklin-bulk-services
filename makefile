@@ -53,7 +53,7 @@ az-fapp-clean:
 	@echo "Cleaning local Azure Function App build in ${build-dir}"
 	@rm -rf ${build-dir}
 
-az-fapp-build: #az-login
+az-fapp-build: az-fapp-clean #az-login
 	$(call check_defined, function-app)
 	$(call check_defined, build-dir)
 	$(call check_defined, fapp-folder)
@@ -65,6 +65,7 @@ az-fapp-build: #az-login
 	@cp ${fapp-folder}/host.json ${build-dir}/host.json
 	@cp ${fapp-folder}/.funcignore ${build-dir}/.funcignore
 	@cp ${fapp-folder}/.npmrc ${build-dir}/.npmrc
+	@cp ${fapp-folder}/.puppeteerrc.cjs ${build-dir}/.puppeteerrc.cjs
 
 	@echo "Getting function app settings from ${function-app}"
 	@cd ${build-dir}; \
