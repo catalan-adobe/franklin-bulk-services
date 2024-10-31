@@ -18,7 +18,7 @@ const SHAREPOINT_TARGETS = {
     },
     lpb: {
         root: 'https://adobe.sharepoint.com/sites/alturaeds',
-        path: '/Shared Documents/essaslpbeds',
+        path: '/Shared Documents/esaaslpbeds',
         
     },
 };
