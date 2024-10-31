@@ -6,45 +6,60 @@ const DEFAULT_CRAWL_OPTIONS = {
     exclusionPatterns: [],
     limit: -1,
     sameDomain: true,
-    keepHash: true,
+    keepHash: false,
 };
 
 export async function main(context, req) {
     
-    context.log("Request: ", req);
-    
-    const options = {
-        ...DEFAULT_CRAWL_OPTIONS,
-        ...req.body?.options,
-    };
-    
-    // logger
-    options.logger = {
-        debug: context.log.verbose,
-        info: context.log.info,
-        warn: context.log.warn,
-        error: context.log.error,
-    };
+    try {
+        if (!req.body?.url) {
+            throw new Error("Missing 'url' in the request body");
+        }
+        
+        context.log("Request: ", req);
+        
+        const options = {
+            ...DEFAULT_CRAWL_OPTIONS,
+            ...req.body?.options,
+        };
+        
+        // logger
+        options.logger = {
+            debug: context.log.verbose,
+            info: context.log.info,
+            warn: context.log.warn,
+            error: context.log.error,
+            silly: context.log.verbose,
+        };
+        
+        const urls = [];
 
-    if (req.method === 'GET') {
-        context.res = {
-            body: USAGE_MESSAGE,
-            headers: {
-                "content-type": "text/plain",
+        options.urlStreamFn = async (newCrawl) => {
+            if (newCrawl.length > 0) {
+                urls.push(...newCrawl.map((u) => u.url));
             }
         };
-        context.done();
-        return new Promise(() => {}).resolve();
-    }
-    
-    try {
-        const urls = await frkBulk.Web.crawl(req.body.url, options);
+
+        if (req.method === 'GET') {
+            context.res = {
+                body: USAGE_MESSAGE,
+                headers: {
+                    "content-type": "text/plain",
+                }
+            };
+            context.done();
+            return new Promise(() => {}).resolve();
+        }
         
+        const result = await frkBulk.Web.crawl(req.body.url, options);
+        
+        result.urls.all = urls;
+
         context.log(`All done. ✨`);
         
         context.res = {
             status: 200,
-            body: urls,
+            body: result,
             headers: {
                 "content-type": "application/json"
             }
@@ -52,7 +67,10 @@ export async function main(context, req) {
     } catch(e) {
         context.log.error(e);
         context.res = {
-            body: e,
+            headers: {
+                'x-error': e.cause || e.message,
+            },
+            body: e.cause || e.message,
         };
     }
 };
