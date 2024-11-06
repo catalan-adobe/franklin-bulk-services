@@ -273,7 +273,8 @@ async function impSvcStartJob(urls, context, config = null) {
         }
         
         const formData = new FormData();
-        formData.append('urls', JSON.stringify(urls));            
+        formData.append('urls', JSON.stringify(urls));
+        // formData.append('options', JSON.stringify({ enableJavascript: true }));       
         
         console.log('executionContext', context.executionContext.functionDirectory);
         const scriptCode = fs.readFileSync(`${context.executionContext.functionDirectory}/sections-mapping.import.bundle.js`, 'utf8');
