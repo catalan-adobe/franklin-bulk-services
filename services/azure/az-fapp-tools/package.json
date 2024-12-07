@@ -9,7 +9,7 @@
     "postinstall": "npx puppeteer browsers install chrome"
   },
   "dependencies": {
-    "@adobe/fetch": "4.1.9",
+    "@adobe/fetch": "4.1.11",
     "@adobe/helix-md2docx": "2.1.79",
     "@adobe/helix-shared-utils": "3.0.2",
     "@azure/event-hubs": "5.12.2",
