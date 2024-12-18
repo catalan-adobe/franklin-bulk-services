@@ -1,0 +1,11 @@
+.cache
+.git*
+.vscode
+local.settings.json
+test
+package-lock.json
+node_modules
+*.mp4
+*.md
+**/node_modules
+docx
