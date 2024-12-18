@@ -6,13 +6,15 @@
       "direction": "in",
       "name": "req",
       "methods": [
+        "get",
         "post"
-      ]
+      ],
+      "route": "v7/import/bulk/default/job/{id?}"
     },
     {
       "type": "http",
       "direction": "out",
-      "name": "res"
+      "name": "httpOutput"
     }
   ]
 }
