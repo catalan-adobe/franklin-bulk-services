@@ -16,7 +16,7 @@
     "@azure/functions": "4.6.0",
     "@azure/identity": "4.5.0",
     "@azure/storage-blob": "12.25.0",
-    "adm-zip": "0.5.16",
+    "adm-zip": "0.6.0",
     "cors": "2.8.5",
     "express": "4.21.1",
     "find-free-port": "2.0.0",
